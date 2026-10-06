@@ -238,6 +238,11 @@ dialog = Diálogo
     .change-prompt = As alterações nas definições serão automaticamente revertidas em { $time } segundos.
     .revert-settings = Reverter definições
 
+# POP Flow
+pop-flow-show-desktop = Mostrar ambiente de trabalho
+    .per-output = Só o ecrã onde foi acionado
+    .per-output-desc = Desligado, o ambiente de trabalho aparece em todos os ecrãs de uma vez.
+
 ## Sound
 
 sound = Som

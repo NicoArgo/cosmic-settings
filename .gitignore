@@ -10,3 +10,6 @@ debian/*
 !debian/rules
 !debian/source
 !debian/install
+
+# POP Flow: install.sh keeps the stock binary here; never commit it.
+*.orig

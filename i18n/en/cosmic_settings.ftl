@@ -471,6 +471,11 @@ dialog = Dialog
     .change-prompt = Settings changes will automatically revert in { $time } seconds.
     .revert-settings = Revert settings
 
+# POP Flow
+pop-flow-show-desktop = Show desktop
+    .per-output = Only the screen where it was triggered
+    .per-output-desc = When off, the desktop is shown on all screens at once.
+
 ## Sound
 
 sound = Sound

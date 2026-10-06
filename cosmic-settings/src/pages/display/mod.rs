@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 pub mod arrangement;
+// POP Flow: per-screen "show desktop" switch.
+pub mod show_desktop;
 // pub mod night_light;
 
 use crate::{app, pages};
@@ -108,6 +110,11 @@ pub enum Message {
         randr: Arc<Result<List, cosmic_randr_shell::Error>>,
     },
     Surface(surface::Action),
+    /// POP Flow: the "only the screen where it was triggered" switch was flipped.
+    ShowDesktopPerOutput(bool),
+    /// POP Flow: `com.popflow.ShowDesktop` changed on disk (e.g. from the
+    /// screen corner); re-read it.
+    ShowDesktopConfigChanged,
 }
 
 impl From<Message> for app::Message {
@@ -152,6 +159,10 @@ pub struct Page {
     dialog_countdown: usize,
     show_display_options: bool,
     adjusted_scale: u32,
+    /// POP Flow: `com.popflow.ShowDesktop`, opened on page entry.
+    show_desktop_config: Option<cosmic_config::Config>,
+    /// POP Flow: last known value of its `per_output` key.
+    show_desktop_per_output: bool,
 }
 
 impl Default for Page {
@@ -174,6 +185,8 @@ impl Default for Page {
             dialog_countdown: 0,
             show_display_options: true,
             adjusted_scale: 0,
+            show_desktop_config: None,
+            show_desktop_per_output: show_desktop::PER_OUTPUT_DEFAULT,
         }
     }
 }
@@ -225,6 +238,8 @@ impl page::Page<crate::pages::Message> for Page {
             sections.insert(display_arrangement()),
             // Display configuration
             sections.insert(display_configuration()),
+            // POP Flow: show desktop on one screen or all
+            sections.insert(show_desktop::section()),
         ])
     }
 
@@ -244,6 +259,8 @@ impl page::Page<crate::pages::Message> for Page {
             fl!("orientation", "rotate-180"),
             fl!("orientation", "rotate-270"),
         ];
+
+        self.load_show_desktop();
 
         let mut tasks = Vec::with_capacity(3);
         tasks.push(cosmic::task::future(on_enter()));
@@ -388,8 +405,17 @@ impl page::Page<crate::pages::Message> for Page {
         Task::none()
     }
 
+    /// POP Flow: follow `com.popflow.ShowDesktop` while the page is open, so a
+    /// flip from the screen corner shows up here at once.
+    fn subscription(&self, core: &cosmic::Core) -> cosmic::iced::Subscription<pages::Message> {
+        core.watch_config::<show_desktop::ShowDesktopConfig>(show_desktop::CONFIG_ID)
+            .map(|_update| pages::Message::Displays(Message::ShowDesktopConfigChanged))
+    }
+
     #[cfg(feature = "test")]
     fn on_enter(&mut self) -> Task<crate::pages::Message> {
+        self.load_show_desktop();
+
         cosmic::task::future(async move {
             let mut randr = List::default();
 
@@ -658,6 +684,17 @@ impl Page {
             Message::Surface(a) => {
                 return cosmic::task::message(crate::app::Message::Surface(a));
             }
+
+            Message::ShowDesktopPerOutput(value) => {
+                self.show_desktop_per_output = value;
+                show_desktop::set_per_output(self.show_desktop_config.as_ref(), value);
+                return Task::none();
+            }
+
+            Message::ShowDesktopConfigChanged => {
+                self.load_show_desktop();
+                return Task::none();
+            }
         }
 
         self.last_pan = 0.5;
@@ -665,6 +702,14 @@ impl Page {
             self.display_arrangement_scrollable.clone(),
             RelativeOffset { x: 0.5, y: 0.5 },
         )
+    }
+
+    /// POP Flow: (re)open `com.popflow.ShowDesktop` and read `per_output`.
+    fn load_show_desktop(&mut self) {
+        if self.show_desktop_config.is_none() {
+            self.show_desktop_config = show_desktop::open();
+        }
+        self.show_desktop_per_output = show_desktop::per_output(self.show_desktop_config.as_ref());
     }
 
     // /// Displays the night light context drawer.
