@@ -9,13 +9,15 @@ use super::{ShortcutBinding, ShortcutMessage, ShortcutModel};
 use cosmic::app::ContextDrawer;
 use cosmic::iced::keyboard::key::Named;
 use cosmic::iced::keyboard::{Key, Location, Modifiers};
+use cosmic::iced::platform_specific::shell::wayland::commands::keyboard_shortcuts_inhibit;
+use cosmic::iced::platform_specific::shell::wayland::keymap;
 use cosmic::iced::{Alignment, Length};
-use cosmic::iced_winit;
 use cosmic::widget::{self, button, icon};
 use cosmic::{Apply, Element, Task};
 use cosmic_settings_config::Binding;
 use cosmic_settings_config::shortcuts::{Action, Shortcuts};
 use cosmic_settings_page::{self as page, Section, section};
+use iced_winit::conversion;
 use slab::Slab;
 use slotmap::{Key as SlotKey, SlotMap};
 
@@ -67,6 +69,7 @@ pub enum Message {
     Shortcut(ShortcutMessage),
     /// Open the add shortcut context drawer
     ShortcutContext,
+    TabPressed,
     ModifiersChanged(Modifiers),
     KeyReleased(u32, Key, Location),
     KeyPressed(u32, Key, Location, Modifiers),
@@ -112,13 +115,13 @@ impl Page {
             Message::KeyEditing(id, enable) => {
                 if enable {
                     self.add_shortcut.editing = Some(id);
-                    return iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard();
+                    return keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard();
                 } else if self.add_shortcut.editing == Some(id) {
                     self.add_shortcut.editing = None;
 
                     return Task::batch(vec![
                         widget::text_input::focus(widget::Id::unique()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                     ]);
                 }
             }
@@ -151,7 +154,7 @@ impl Page {
                     self.add_shortcut.editing = Some(*index);
                     return Task::batch(vec![
                         widget::text_input::focus(binding.clone()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                     ]);
                 } else {
                     // make a new empty binding if none exist
@@ -163,7 +166,7 @@ impl Page {
                     );
                     return Task::batch(vec![
                         widget::text_input::focus(new_id.clone()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard(),
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard(),
                     ]);
                 }
             }
@@ -174,10 +177,7 @@ impl Page {
                     return Task::batch(vec![
                         widget::text_input::focus(id.clone()),
                         widget::text_input::select_all(id.clone()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(
-                            true,
-                        )
-                        .discard()
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard(),
                     ]);
                 }
             }
@@ -260,7 +260,8 @@ impl Page {
                                 .keys
                                 .get_mut(self.add_shortcut.editing.unwrap())
                             else {
-                                return iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard();
+                                return keyboard_shortcuts_inhibit::inhibit_shortcuts(false)
+                                    .discard();
                             };
                             k.0 = binding.to_string();
 
@@ -269,7 +270,7 @@ impl Page {
                             {
                                 return Task::batch(vec![
                                     widget::text_input::focus(widget::Id::unique()),
-                                    iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                                    keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                                 ]);
                             }
                             self.add_shortcut(binding, false);
@@ -277,14 +278,14 @@ impl Page {
 
                             return Task::batch(vec![
                                 widget::text_input::focus(widget::Id::unique()),
-                                iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                                keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                             ]);
                         } else if old.alt || old.ctrl || old.shift {
                             self.add_shortcut = Default::default();
                             _ = self.model.on_enter();
 
                             return Task::batch(vec![
-                                iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard()
+                                keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                             ]);
                         }
                     }
@@ -295,6 +296,26 @@ impl Page {
                     {
                         k.0 = self.add_shortcut.binding.to_string();
                     }
+                }
+            }
+            // libcosmic requires we set on_tab() and manually process here
+            // otherwise it'll consume the tab key event for navigation
+            Message::TabPressed => {
+                if self.add_shortcut.editing.is_some() && self.add_shortcut.active {
+                    self.add_shortcut.binding.key = Some(xkeysym::Keysym::Tab);
+                    self.add_shortcut.binding.keycode = Some(0);
+                    if let Some(k) = self
+                        .add_shortcut
+                        .keys
+                        .get_mut(self.add_shortcut.editing.unwrap())
+                    {
+                        k.0 = self.add_shortcut.binding.to_string();
+                    }
+                    return self.update(Message::KeyReleased(
+                        0,
+                        Key::Named(Named::Tab),
+                        Location::Standard,
+                    ));
                 }
             }
             Message::KeyReleased(keycode, _, _) => {
@@ -310,7 +331,7 @@ impl Page {
                     && self.add_shortcut.binding.modifiers
                         != cosmic_settings_config::shortcuts::Modifiers::new()
                     || self.add_shortcut.binding.key.is_some_and(|key| {
-                        key.is_misc_function_key() || matches!(key.raw(), 0x10080001..=0x1008FFFF)
+                        !cosmic_settings_config::shortcuts::is_forbidden_unmodified_keysym(key)
                     })
                 {
                     // XX for now avoid applying the keycode
@@ -325,7 +346,7 @@ impl Page {
                         .keys
                         .get_mut(self.add_shortcut.editing.unwrap())
                     else {
-                        return iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard();
+                        return keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard();
                     };
                     k.0 = binding.to_string();
 
@@ -334,7 +355,7 @@ impl Page {
                     {
                         return Task::batch(vec![
                             widget::text_input::focus(widget::Id::unique()),
-                            iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                            keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                         ]);
                     }
                     self.add_shortcut(binding, false);
@@ -342,7 +363,7 @@ impl Page {
 
                     return Task::batch(vec![
                         widget::text_input::focus(widget::Id::unique()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                     ]);
                 }
             }
@@ -351,16 +372,13 @@ impl Page {
                     self.add_shortcut.editing = None;
                     return Task::batch(vec![
                         widget::text_input::focus(widget::Id::unique()),
-                        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
+                        keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard(),
                     ]);
                 }
                 if self.add_shortcut.active {
                     self.add_shortcut.binding.keycode = Some(keycode);
                     self.add_shortcut.binding.key =
-                        iced_winit::platform_specific::wayland::keymap::key_to_keysym(
-                            unmodified_keysym,
-                            location,
-                        );
+                        keymap::key_to_keysym(unmodified_keysym, location);
                     if let Some(k) = self
                         .add_shortcut
                         .keys
@@ -385,11 +403,8 @@ impl Page {
             binding.clear();
 
             return Task::batch(vec![
-            widget::text_input::focus(id.clone()),
-            iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(
-                    true,
-                )
-                .discard(),
+                widget::text_input::focus(id.clone()),
+                keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard(),
             ]);
         }
 
@@ -403,10 +418,7 @@ impl Page {
         Task::batch(vec![
             widget::text_input::focus(new_id.clone()),
             widget::text_input::select_all(new_id),
-            iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(
-                true,
-            )
-            .discard(),
+            keyboard_shortcuts_inhibit::inhibit_shortcuts(true).discard(),
         ])
     }
 
@@ -423,24 +435,24 @@ impl Page {
             .on_submit(|_| Message::EditCombination)
             .id(self.task_id.clone());
 
-        let name_control = widget::column()
+        let name_control = widget::column::with_capacity(2)
             .spacing(4)
             .push(widget::text::body(fl!("shortcut-name")))
             .push(name_input);
 
-        let command_control = widget::column()
+        let command_control = widget::column::with_capacity(2)
             .spacing(4)
             .push(widget::text::body(fl!("command")))
             .push(task_input);
 
-        let input_fields = widget::column()
+        let input_fields = widget::column::with_capacity(2)
             .spacing(12)
             .push(name_control)
             .push(command_control)
             .padding([16, 24]);
 
         let keys = self.add_shortcut.keys.iter().fold(
-            widget::list_column().spacing(0),
+            widget::list_column(),
             |column, (id, (text, widget_id))| {
                 let key_combination = widget::editable_input(
                     fl!("type-key-combination"),
@@ -452,6 +464,7 @@ impl Page {
                 .select_on_focus(true)
                 .on_input(move |input| Message::KeyInput(id, input))
                 .on_submit(|_| Message::AddKeybinding)
+                .on_tab(Message::TabPressed) // capture Tab to prevent focus navigation
                 .padding([0, 12])
                 .id(widget_id.clone())
                 .apply(widget::container)
@@ -461,7 +474,7 @@ impl Page {
             },
         );
 
-        let controls = widget::list_column().add(input_fields).add(keys).spacing(0);
+        let controls = widget::list_column().add(input_fields).add(keys);
 
         let add_keybinding_button = widget::button::standard(fl!("add-another-keybinding"))
             .on_press(Message::AddShortcut)
@@ -469,7 +482,7 @@ impl Page {
             .width(Length::Fill)
             .align_x(Alignment::End);
 
-        widget::column()
+        widget::column::with_capacity(2)
             .spacing(32)
             .push(controls)
             .push(add_keybinding_button)
@@ -569,10 +582,7 @@ impl page::Page<crate::pages::Message> for Page {
 
     fn on_leave(&mut self) -> Task<crate::pages::Message> {
         self.model.on_clear();
-        iced_winit::platform_specific::commands::keyboard_shortcuts_inhibit::inhibit_shortcuts(
-            false,
-        )
-        .discard()
+        keyboard_shortcuts_inhibit::inhibit_shortcuts(false).discard()
     }
 
     #[cfg(feature = "wayland")]
@@ -580,7 +590,8 @@ impl page::Page<crate::pages::Message> for Page {
         &self,
         core: &cosmic::Core,
     ) -> cosmic::iced::Subscription<crate::pages::Message> {
-        use cosmic::iced::{self, event::listen_with};
+        use cosmic::iced::event::listen_with;
+        use cosmic::iced::{self};
 
         cosmic::iced::Subscription::batch(vec![
             if self.add_shortcut.active
@@ -595,21 +606,19 @@ impl page::Page<crate::pages::Message> for Page {
                         modifiers,
                         ..
                     }) => {
-                        use cosmic::iced::keyboard::{Key, key::Named};
+                        use cosmic::iced::keyboard::Key;
+                        use cosmic::iced::keyboard::key::Named;
                         if matches!(
                             key,
                             Key::Named(Named::Super | Named::Alt | Named::Control | Named::Shift)
-                        ) || matches!((&key, modifiers), (Key::Named(Named::Tab), modifiers) if modifiers.is_empty() || modifiers == Modifiers::SHIFT)
-                        {
+                        ) {
                             return None;
                         }
-                        cosmic::iced_winit::conversion::physical_to_scancode(physical_key).map(
-                            |code| {
-                                crate::pages::Message::CustomShortcuts(Message::KeyPressed(
-                                    code, key, location, modifiers,
-                                ))
-                            },
-                        )
+                        conversion::physical_to_scancode(physical_key).map(|code| {
+                            crate::pages::Message::CustomShortcuts(Message::KeyPressed(
+                                code, key, location, modifiers,
+                            ))
+                        })
                     }
                     iced::event::Event::Keyboard(iced::keyboard::Event::KeyReleased {
                         key,
@@ -617,20 +626,19 @@ impl page::Page<crate::pages::Message> for Page {
                         location,
                         ..
                     }) => {
-                        use cosmic::iced::keyboard::{Key, key::Named};
+                        use cosmic::iced::keyboard::Key;
+                        use cosmic::iced::keyboard::key::Named;
                         if matches!(
                             key,
                             Key::Named(Named::Super | Named::Alt | Named::Control | Named::Shift)
                         ) {
                             return None;
                         }
-                        cosmic::iced_winit::conversion::physical_to_scancode(physical_key).map(
-                            |code| {
-                                crate::pages::Message::CustomShortcuts(Message::KeyReleased(
-                                    code, key, location,
-                                ))
-                            },
-                        )
+                        conversion::physical_to_scancode(physical_key).map(|code| {
+                            crate::pages::Message::CustomShortcuts(Message::KeyReleased(
+                                code, key, location,
+                            ))
+                        })
                     }
                     iced::event::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(e)) => {
                         Some(crate::pages::Message::CustomShortcuts(
@@ -718,7 +726,7 @@ fn shortcuts() -> Section<crate::pages::Message> {
                 .width(Length::Fill)
                 .align_x(Alignment::End);
 
-            widget::column()
+            widget::column::with_capacity(2)
                 .push(content)
                 .push(add_shortcut)
                 .spacing(24)

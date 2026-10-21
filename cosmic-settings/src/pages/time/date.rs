@@ -1,33 +1,29 @@
 // Copyright 2023 System76 <info@system76.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
-use cosmic::{
-    Apply, Element, Task,
-    app::ContextDrawer,
-    cosmic_config::{self, ConfigGet, ConfigSet},
-    iced_core::text::Wrapping,
-    surface,
-    widget::{self, dropdown, settings},
-};
+use crate::widget::selection_context_item;
+use cosmic::app::ContextDrawer;
+use cosmic::cosmic_config::{self, ConfigGet, ConfigSet};
+use cosmic::iced::core::text::Wrapping;
+use cosmic::widget::{self, dropdown, settings};
+use cosmic::{Apply, Element, Task, surface};
 use cosmic_settings_page::{self as page, Section, section};
-use icu::{
-    calendar::{Gregorian, types::Weekday, week},
-    datetime::{
-        DateTimeFormatter, DateTimeFormatterPreferences, fieldsets,
-        input::{Date, DateTime, Time},
-        options::TimePrecision,
-    },
-    locale::{Locale, preferences::extensions::unicode::keywords::HourCycle},
-};
-use slab::Slab;
+use icu::calendar::types::Weekday;
+use icu::calendar::{Gregorian, week};
+use icu::datetime::input::{Date, DateTime, Time};
+use icu::datetime::options::TimePrecision;
+use icu::datetime::{DateTimeFormatter, DateTimeFormatterPreferences, fieldsets};
+use icu::locale::Locale;
+use icu::locale::preferences::extensions::unicode::keywords::HourCycle;
 use slotmap::{Key, SlotMap};
-use std::rc::Rc;
 pub use timedate_zbus::TimeDateProxy;
 use tracing::error;
 
 crate::cache_dynamic_lazy! {
     static WEEKDAYS: [String; 4] = [fl!("time-format", "friday"), fl!("time-format", "saturday"), fl!("time-format", "sunday"), fl!("time-format", "monday")];
-}
+    static SHOW_WEEKDAY: String = fl!("time-format", "show-weekday");
+    static SHOW_SECONDS: String = fl!("time-format", "show-seconds");
+    static SHOW_DATE: String = fl!("time-format", "date");}
 
 #[derive(Debug, Clone)]
 pub struct Info {
@@ -42,9 +38,11 @@ pub struct Page {
     first_day_of_week: usize,
     military_time: bool,
     show_seconds: bool,
+    show_weekday: bool,
     ntp_enabled: bool,
     show_date_in_top_panel: bool,
     timezone_context: bool,
+    date_time_applet_context: bool,
     local_time: Option<DateTime<Gregorian>>,
     timezone: Option<usize>,
     timezone_list: Vec<String>,
@@ -74,6 +72,16 @@ impl Default for Page {
             .unwrap_or_else(|err| {
                 if err.is_err() {
                     error!(?err, "Failed to read config 'show_seconds'");
+                }
+
+                false
+            });
+
+        let show_weekday = cosmic_applet_config
+            .get("show_weekday")
+            .unwrap_or_else(|err| {
+                if err.is_err() {
+                    error!(?err, "Failed to read config 'show_weekday'");
                 }
 
                 false
@@ -109,10 +117,12 @@ impl Default for Page {
             local_time: None,
             military_time,
             show_seconds,
+            show_weekday,
             ntp_enabled: false,
             show_date_in_top_panel,
             timezone: None,
             timezone_context: false,
+            date_time_applet_context: false,
             timezone_list: Vec::new(),
             timezone_search: String::new(),
         }
@@ -138,7 +148,7 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> page::Info {
         page::Info::new("time-date", "preferences-system-time-symbolic")
             .title(fl!("time-date"))
-            .description(fl!("time-date", "desc"))
+            .description(fl!("xdg-entry-date-time-comment"))
     }
 
     fn on_enter(&mut self) -> Task<crate::pages::Message> {
@@ -189,6 +199,15 @@ impl page::Page<crate::pages::Message> for Page {
                 .title(fl!("time-zone"))
                 .header(search),
             );
+        } else if self.date_time_applet_context {
+            return Some(
+                cosmic::app::context_drawer(
+                    self.date_time_applet_view()
+                        .map(crate::pages::Message::from),
+                    crate::pages::Message::CloseContextDrawer,
+                )
+                .title(fl!("date-time-applet-settings-title")),
+            );
         }
 
         None
@@ -222,12 +241,26 @@ impl Page {
                 }
             }
 
+            Message::ShowWeekday(enable) => {
+                self.show_weekday = enable;
+                self.update_local_time();
+
+                if let Err(err) = self.cosmic_applet_config.set("show_weekday", enable) {
+                    error!(?err, "Failed to set config 'show_weekday'");
+                }
+            }
+
             Message::FirstDayOfWeek(weekday) => {
                 self.first_day_of_week = weekday;
 
                 if let Err(err) = self.cosmic_applet_config.set("first_day_of_week", weekday) {
                     error!(?err, "Failed to set config 'first_day_of_week'");
                 }
+            }
+
+            Message::DateAndTimeContext => {
+                self.date_time_applet_context = true;
+                return cosmic::task::message(crate::app::Message::OpenContextDrawer(self.entity));
             }
 
             Message::ShowDate(enable) => {
@@ -336,7 +369,11 @@ impl Page {
 
         for (id, timezone) in self.timezone_list.iter().enumerate() {
             if search_input.is_empty() || timezone.to_lowercase().contains(search_input) {
-                list = list.add(self.timezone_context_item(id, timezone));
+                list = list.add(selection_context_item(
+                    timezone,
+                    Some(id) == self.timezone,
+                    Message::Timezone(id),
+                ));
             }
         }
 
@@ -344,38 +381,23 @@ impl Page {
             .map(crate::pages::Message::DateAndTime)
     }
 
-    fn timezone_context_item<'a>(&self, id: usize, timezone: &'a str) -> Element<'a, Message> {
-        let svg_accent = Rc::new(|theme: &cosmic::Theme| cosmic::widget::svg::Style {
-            color: Some(theme.cosmic().accent_text_color().into()),
-        });
-        let selected = Some(id) == self.timezone;
+    fn date_time_applet_view(&self) -> Element<'_, crate::pages::Message> {
+        let mut list = widget::list_column();
 
-        widget::settings::item_row(vec![
-            widget::text::body(timezone)
-                .class(if selected {
-                    cosmic::theme::Text::Accent
-                } else {
-                    cosmic::theme::Text::Default
-                })
-                .wrapping(Wrapping::Word)
-                .width(cosmic::iced::Length::Fill)
-                .into(),
-            if selected {
-                widget::icon::from_name("object-select-symbolic")
-                    .size(16)
-                    .icon()
-                    .class(cosmic::theme::Svg::Custom(svg_accent.clone()))
-                    .into()
-            } else {
-                widget::horizontal_space().width(16).into()
-            },
-        ])
-        .apply(widget::container)
-        .class(cosmic::theme::Container::List)
-        .apply(widget::button::custom)
-        .class(cosmic::theme::Button::Transparent)
-        .on_press(Message::Timezone(id))
-        .into()
+        list = list.add(
+            settings::item::builder(&*SHOW_DATE)
+                        .toggler(self.show_date_in_top_panel, Message::ShowDate)
+        )
+        .add(
+            settings::item::builder(&*SHOW_WEEKDAY)
+                .toggler(self.show_weekday, Message::ShowWeekday),
+        )
+        .add(
+            settings::item::builder(&*SHOW_SECONDS)
+                        .toggler(self.show_seconds, Message::ShowSeconds));
+
+        list.apply(Element::from)
+            .map(crate::pages::Message::DateAndTime)
     }
 
     fn update_local_time(&mut self) {
@@ -393,23 +415,25 @@ pub enum Message {
     Error(String),
     MilitaryTime(bool),
     ShowSeconds(bool),
+    ShowWeekday(bool),
     None,
     FirstDayOfWeek(usize),
     Refresh(Info),
     ShowDate(bool),
     Timezone(usize),
     TimezoneContext,
+    DateAndTimeContext,
     TimezoneSearch(String),
     UpdateTime,
-    Surface(surface::Action),
+    Surface(surface::Action<crate::app::Message>),
 }
 
 impl page::AutoBind<crate::pages::Message> for Page {}
 
 fn date() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let title = descriptions.insert(fl!("time-date"));
+    crate::slab!(descriptions {
+        title = fl!("time-date");
+    });
 
     Section::default()
         .title(fl!("time-date"))
@@ -428,12 +452,11 @@ fn date() -> Section<crate::pages::Message> {
 }
 
 fn format() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let military = descriptions.insert(fl!("time-format", "twenty-four"));
-    let show_seconds = descriptions.insert(fl!("time-format", "show-seconds"));
-    let first = descriptions.insert(fl!("time-format", "first"));
-    let show_date = descriptions.insert(fl!("time-format", "show-date"));
+    crate::slab!(descriptions {
+        military = fl!("time-format", "twenty-four");
+        first = fl!("time-format", "first");
+        date_time_applet_settings_label = fl!("date-time-applet-settings-label");
+    });
 
     Section::default()
         .title(fl!("time-format"))
@@ -445,11 +468,6 @@ fn format() -> Section<crate::pages::Message> {
                 .add(
                     settings::item::builder(&section.descriptions[military])
                         .toggler(page.military_time, Message::MilitaryTime),
-                )
-                // Show seconds in time format
-                .add(
-                    settings::item::builder(&section.descriptions[show_seconds])
-                        .toggler(page.show_seconds, Message::ShowSeconds),
                 )
                 // First day of week
                 .add(
@@ -480,49 +498,40 @@ fn format() -> Section<crate::pages::Message> {
                         ),
                     ),
                 )
-                // Date on top panel toggle
+                // Show a Context Drawer which contains settings for how the Date and Time applet displays the date.
                 .add(
-                    settings::item::builder(&section.descriptions[show_date])
-                        .toggler(page.show_date_in_top_panel, Message::ShowDate),
-                )
+                    crate::widget::go_next_with_item(
+                        &section.descriptions[date_time_applet_settings_label],
+                        "",
+                        Message::DateAndTimeContext,
+                ))
                 .apply(cosmic::Element::from)
                 .map(crate::pages::Message::DateAndTime)
         })
 }
 
 fn timezone() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let time_zone = descriptions.insert(fl!("time-zone"));
+    crate::slab!(descriptions {
+        time_zone = fl!("time-zone");
+    });
 
     Section::default()
         .title(fl!("time-zone"))
         .descriptions(descriptions)
         .view::<Page>(move |_binder, page, section| {
-            let timezone_context_button = widget::row::with_capacity(2)
-                .spacing(12)
-                .push(
+            settings::section()
+                .title(&section.title)
+                // Time zone select
+                .add(crate::widget::go_next_with_item(
+                    &section.descriptions[time_zone],
                     widget::text::body(
                         page.timezone
                             .map(|id| &*page.timezone_list[id])
                             .unwrap_or_default(),
                     )
                     .wrapping(Wrapping::Word),
-                )
-                .push(widget::icon::from_name("go-next-symbolic").size(16).icon())
-                .apply(widget::container)
-                .class(cosmic::theme::Container::List)
-                .apply(widget::button::custom)
-                .class(cosmic::theme::Button::Transparent)
-                .on_press(Message::TimezoneContext);
-
-            settings::section()
-                .title(&section.title)
-                // Time zone select
-                .add(
-                    settings::item::builder(&*section.descriptions[time_zone])
-                        .control(timezone_context_button),
-                )
+                    Message::TimezoneContext,
+                ))
                 .apply(cosmic::Element::from)
                 .map(crate::pages::Message::DateAndTime)
         })

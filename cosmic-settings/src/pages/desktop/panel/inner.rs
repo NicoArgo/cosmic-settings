@@ -1,14 +1,11 @@
-use cosmic::{
-    Element, Task,
-    cctk::sctk::reexports::client::{Proxy, backend::ObjectId, protocol::wl_output::WlOutput},
-    cosmic_config::{self, CosmicConfigEntry},
-    cosmic_theme::Density,
-    iced::{Alignment, Length},
-    surface, theme,
-    widget::{
-        button, container, dropdown, horizontal_space, icon, row, settings, slider, text, toggler,
-    },
-};
+use cosmic::cctk::sctk::reexports::client::Proxy;
+use cosmic::cctk::sctk::reexports::client::backend::ObjectId;
+use cosmic::cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
+use cosmic::cosmic_config::{self, CosmicConfigEntry};
+use cosmic::cosmic_theme::{Density, Roundness};
+use cosmic::iced::{Alignment, Length};
+use cosmic::widget::{button, container, dropdown, row, settings, slider, space, text};
+use cosmic::{Element, Task, surface};
 
 use cosmic::Apply;
 use cosmic_config::ConfigSet;
@@ -17,16 +14,15 @@ use cosmic_panel_config::{
     CosmicPanelOuput, PanelAnchor, PanelSize,
 };
 use cosmic_settings_page::{self as page, Section};
-use slab::Slab;
-use std::{collections::HashMap, time::Duration};
-
-use crate::pages::desktop::appearance::Roundness;
+use std::collections::HashMap;
+use std::time::Duration;
 
 pub struct PageInner {
     pub(crate) config_helper: Option<cosmic_config::Config>,
     pub(crate) panel_config: Option<CosmicPanelConfig>,
     pub opacity: f32,
     pub opacity_changing: bool,
+    pub size: PanelSize,
     pub outputs: Vec<String>,
     pub anchors: Vec<String>,
     pub backgrounds: Vec<String>,
@@ -44,6 +40,7 @@ impl Default for PageInner {
             panel_config: Option::default(),
             opacity: 0.0,
             opacity_changing: false,
+            size: PanelSize::M,
             outputs: vec![fl!("all-displays")],
             anchors: vec![
                 Anchor(PanelAnchor::Left).to_string(),
@@ -102,11 +99,11 @@ pub(crate) fn behavior_and_position<
     p: &P,
     msg_map: T,
 ) -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let autohide_label = descriptions.insert(p.autohide_label());
-    let position = descriptions.insert(fl!("panel-behavior-and-position", "position"));
-    let display = descriptions.insert(fl!("panel-behavior-and-position", "display"));
+    crate::slab!(descriptions {
+        autohide_label = p.autohide_label();
+        position = fl!("panel-behavior-and-position", "position");
+        display = fl!("panel-behavior-and-position", "display");
+    });
 
     Section::default()
         .title(fl!("panel-behavior-and-position"))
@@ -119,10 +116,10 @@ pub(crate) fn behavior_and_position<
             };
             settings::section()
                 .title(&section.title)
-                .add(settings::item(
-                    &descriptions[autohide_label],
-                    toggler(panel_config.autohide.is_some()).on_toggle(Message::AutoHidePanel),
-                ))
+                .add(
+                    settings::item::builder(&descriptions[autohide_label])
+                        .toggler(panel_config.autohide_enabled(), Message::AutoHidePanel),
+                )
                 .add(settings::item(
                     &descriptions[position],
                     dropdown::popup_dropdown(
@@ -161,13 +158,13 @@ pub(crate) fn style<
     p: &P,
     msg_map: T,
 ) -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let gap_label = descriptions.insert(p.gap_label());
-    let extend_label = descriptions.insert(p.extend_label());
-    let appearance = descriptions.insert(fl!("panel-style", "appearance"));
-    let background_opacity = descriptions.insert(fl!("panel-style", "background-opacity"));
-    let size = descriptions.insert(fl!("panel-style", "size"));
+    crate::slab!(descriptions {
+        gap_label = p.gap_label();
+        extend_label = p.extend_label();
+        appearance = fl!("panel-style", "appearance");
+        background_opacity = fl!("panel-style", "background-opacity");
+        size = fl!("panel-style", "size");
+    });
 
     Section::default()
         .title(fl!("panel-style"))
@@ -180,14 +177,14 @@ pub(crate) fn style<
             };
             settings::section()
                 .title(&section.title)
-                .add(settings::item(
-                    &descriptions[gap_label],
-                    toggler(panel_config.anchor_gap).on_toggle(Message::AnchorGap),
-                ))
-                .add(settings::item(
-                    &descriptions[extend_label],
-                    toggler(panel_config.expand_to_edges).on_toggle(Message::ExtendToEdge),
-                ))
+                .add(
+                    settings::item::builder(&descriptions[gap_label])
+                        .toggler(panel_config.anchor_gap, Message::AnchorGap),
+                )
+                .add(
+                    settings::item::builder(&descriptions[extend_label])
+                        .toggler(panel_config.expand_to_edges, Message::ExtendToEdge),
+                )
                 .add(settings::item(
                     &descriptions[appearance],
                     dropdown::popup_dropdown(
@@ -204,14 +201,13 @@ pub(crate) fn style<
                         move |a| crate::app::Message::PageMessage(msg_map(a)),
                     ),
                 ))
-                .add(settings::flex_item(
-                    &descriptions[size],
+                .add(settings::item::builder(&descriptions[size]).flex_control({
                     // TODO custom discrete slider variant
                     row::with_children(vec![
                         text::body(fl!("small")).into(),
                         slider(
                             0..=4,
-                            match panel_config.size {
+                            match inner.size {
                                 PanelSize::XS => 0,
                                 PanelSize::S => 1,
                                 PanelSize::M => 2,
@@ -233,35 +229,44 @@ pub(crate) fn style<
                                 }
                             },
                         )
+                        .on_release(Message::PanelSizeCommit)
+                        .width(Length::Fill)
+                        .apply(cosmic::widget::container)
+                        .max_width(250)
                         .into(),
                         text::body(fl!("large")).into(),
                     ])
                     .align_y(Alignment::Center)
-                    .spacing(8),
-                ))
-                .add(settings::flex_item(
-                    &descriptions[background_opacity],
-                    row::with_capacity(2)
-                        .align_y(Alignment::Center)
-                        .spacing(8)
-                        .push(
-                            text::body(fl!(
-                                "number",
-                                HashMap::from_iter(vec![(
+                    .spacing(8)
+                    .width(Length::Fill)
+                }))
+                .add(
+                    settings::item::builder(&descriptions[background_opacity]).flex_control({
+                        row::with_capacity(2)
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                            .width(Length::Fill)
+                            .push(
+                                text::body(fl!(
                                     "number",
-                                    (panel_config.opacity * 100.0) as i32
-                                )])
-                            ))
-                            .width(Length::Fixed(22.0))
-                            .align_x(Alignment::Center),
-                        )
-                        .push(
-                            slider(0..=100, (panel_config.opacity * 100.0) as i32, |v| {
-                                Message::OpacityRequest(v as f32 / 100.0)
-                            })
-                            .breakpoints(&[50]),
-                        ),
-                ))
+                                    HashMap::from_iter(vec![(
+                                        "number",
+                                        (panel_config.opacity * 100.0) as i32
+                                    )])
+                                ))
+                                .width(Length::Fixed(22.0))
+                                .align_x(Alignment::Center),
+                            )
+                            .push(
+                                slider(0..=100, (panel_config.opacity * 100.0) as i32, |v| {
+                                    Message::OpacityRequest(v as f32 / 100.0)
+                                })
+                                .width(Length::Fill)
+                                .apply(container)
+                                .max_width(250),
+                            )
+                    }),
+                )
                 .apply(Element::from)
                 .map(msg_map)
         })
@@ -270,9 +275,9 @@ pub(crate) fn style<
 pub(crate) fn configuration<P: page::Page<crate::pages::Message> + PanelPage>(
     p: &P,
 ) -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let applets_label = descriptions.insert(p.configure_applets_label());
+    crate::slab!(descriptions {
+        applets_label = p.configure_applets_label();
+    });
 
     Section::default()
         .title(fl!("panel-applets"))
@@ -285,21 +290,10 @@ pub(crate) fn configuration<P: page::Page<crate::pages::Message> + PanelPage>(
                 .iter()
                 .find(|(_, v)| v.id == page.applets_page_id())
             {
-                let control = row::with_children(vec![
-                    horizontal_space().into(),
-                    icon::from_name("go-next-symbolic").size(16).into(),
-                ]);
-
-                settings.add(
-                    settings::item::builder(&*descriptions[applets_label])
-                        .control(control)
-                        .spacing(16)
-                        .apply(container)
-                        .class(theme::Container::List)
-                        .apply(button::custom)
-                        .class(theme::Button::Transparent)
-                        .on_press(crate::pages::Message::Page(panel_applets_entity)),
-                )
+                settings.add(crate::widget::go_next_item(
+                    &descriptions[applets_label],
+                    crate::pages::Message::Page(panel_applets_entity),
+                ))
             } else {
                 settings
             };
@@ -315,9 +309,9 @@ pub(crate) fn add_panel<
 >(
     msg_map: T,
 ) -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let reset_to_default = descriptions.insert(fl!("reset-to-default"));
+    crate::slab!(descriptions {
+        reset_to_default = fl!("reset-to-default");
+    });
 
     Section::default()
         .title(fl!("panel-missing"))
@@ -338,9 +332,9 @@ pub fn reset_button<
 >(
     msg_map: T,
 ) -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let reset_to_default = descriptions.insert(fl!("reset-to-default"));
+    crate::slab!(descriptions {
+        reset_to_default = fl!("reset-to-default");
+    });
 
     Section::default()
         .descriptions(descriptions)
@@ -348,7 +342,7 @@ pub fn reset_button<
             let descriptions = &section.descriptions;
             let inner = page.inner();
             if inner.system_default == inner.panel_config {
-                Element::from(horizontal_space().width(1))
+                Element::from(space())
             } else {
                 button::standard(&descriptions[reset_to_default])
                     .on_press(Message::ResetPanel)
@@ -427,6 +421,7 @@ pub enum Message {
     Output(usize),
     AnchorGap(bool),
     PanelSize(PanelSize),
+    PanelSizeCommit,
     Appearance(usize),
     ExtendToEdge(bool),
     OpacityRequest(f32),
@@ -436,7 +431,7 @@ pub enum Message {
     PanelConfig(Box<CosmicPanelConfig>),
     ResetPanel,
     FullReset,
-    Surface(surface::Action),
+    Surface(surface::Action<crate::app::Message>),
 }
 
 impl PageInner {
@@ -507,6 +502,7 @@ impl PageInner {
                     if let Err(err) = default.write_entry(config) {
                         tracing::error!(?err, "Error resetting panel config.");
                     }
+                    self.size.clone_from(&default.size);
                     self.system_default = Some(default.clone());
                     self.panel_config.clone_from(&self.system_default);
                 } else {
@@ -546,18 +542,10 @@ impl PageInner {
             Message::AutoHidePanel(enabled) => {
                 if enabled {
                     _ = panel_config.set_exclusive_zone(helper, false);
-                    _ = panel_config.set_autohide(
-                        helper,
-                        Some(AutoHide {
-                            wait_time: 1000,
-                            transition_time: 200,
-                            handle_size: 4,
-                            unhide_delay: 200,
-                        }),
-                    );
+                    _ = panel_config.set_autohide(helper, AutoHide::OnOverlap);
                 } else {
                     _ = panel_config.set_exclusive_zone(helper, true);
-                    _ = panel_config.set_autohide(helper, None);
+                    _ = panel_config.set_autohide(helper, AutoHide::Never);
                 }
             }
             Message::PanelAnchor(i) => {
@@ -591,21 +579,21 @@ impl PageInner {
                 }
                 let theme = cosmic::theme::system_preference();
                 let theme = theme.cosmic();
-                let radius = theme.corner_radii;
-                let roundness: Roundness = radius.into();
-                let new_radius;
-                if enabled {
-                    let radii = theme.corner_radii.radius_xl[0] as u32;
-                    new_radius = radii;
-                } else if matches!(roundness, Roundness::Round) && !panel_config.expand_to_edges {
-                    new_radius = 12;
+                let radius = theme.corner_radii.radius_xl[0] as u32;
+                let new_radius = if enabled {
+                    radius
+                } else if !panel_config.expand_to_edges {
+                    radius.min(12)
                 } else {
-                    new_radius = 0;
-                }
+                    0
+                };
                 _ = panel_config.set_border_radius(helper, new_radius).unwrap();
             }
             Message::PanelSize(size) => {
-                _ = panel_config.set_size(helper, size);
+                self.size = size;
+            }
+            Message::PanelSizeCommit => {
+                _ = panel_config.set_size(helper, self.size.clone());
                 // Reset any size overrides the user might have set
                 _ = panel_config.set_size_center(helper, None);
                 _ = panel_config.set_size_wings(helper, None);
@@ -623,17 +611,14 @@ impl PageInner {
 
                 let theme = cosmic::theme::system_preference();
                 let theme = theme.cosmic();
-                let radius = theme.corner_radii;
-                let roundness: Roundness = radius.into();
-                let new_radius;
-                if panel_config.anchor_gap {
-                    let radii = theme.corner_radii.radius_xl[0] as u32;
-                    new_radius = radii;
-                } else if matches!(roundness, Roundness::Round) && !enabled {
-                    new_radius = 12;
+                let radius = theme.corner_radii.radius_xl[0] as u32;
+                let new_radius = if panel_config.anchor_gap {
+                    radius
+                } else if !enabled {
+                    radius.min(12)
                 } else {
-                    new_radius = 0;
-                }
+                    0
+                };
                 _ = panel_config.set_border_radius(helper, new_radius).unwrap();
             }
             Message::OpacityRequest(opacity) => {
@@ -668,6 +653,7 @@ impl PageInner {
                 }
             }
             Message::PanelConfig(c) => {
+                self.size = c.size.clone();
                 self.panel_config = Some(*c);
                 return Task::none();
             }

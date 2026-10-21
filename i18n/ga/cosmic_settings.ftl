@@ -6,13 +6,6 @@ number = { $number }
 
 ## Network & Wireless
 
-connections-and-profiles =
-    { $variant ->
-        [wired] Sreangnasctha
-        [wifi] Wi-Fi
-        [vpn] VPN
-       *[other] anaithnid
-    } ceangail agus próifílí ceangailte.
 add-network = Cuir líonra leis
     .profile = Cuir próifíl leis
 add-vpn = Cuir VPN leis
@@ -67,9 +60,11 @@ vpn-error = Earráid VPN
     .connect = Theip ar nascadh le VPN
     .connection-editor = Theip ar an eagarthóir ceangail
     .connection-settings = Theip ar na socruithe a fháil le haghaidh naisc ghníomhacha
+    .openvpn-config-path = Cosán comhaid neamhbhailí do chumraíocht OpenVPN
+    .openvpn-config-path-desc = Ní mór an comhad roghnaithe a bheith ar chóras comhad áitiúil.
     .updating-state = Theip ar staid an bhainisteora líonra a nuashonrú
     .wireguard-config-path = Cosán comhaid neamhbhailí le haghaidh cumraíochta WireGuard
-    .wireguard-config-path-desc = Caithfidh an comhad roghnaithe a bheith ar chóras comhad áitiúil.
+    .wireguard-config-path-desc = Ní mór an comhad roghnaithe a bheith ar chóras comhad áitiúil.
     .wireguard-device = Theip ar chruthú gléas WireGuard
     .with-password =
         Theip ar VPN a shocrú { $field ->
@@ -99,7 +94,6 @@ activate = Gníomhachtaigh
 confirm = Deimhnigh
 enable = Cumasaigh
 bluetooth = Bluetooth
-    .desc = Bainistigh gléasanna Bluetooth
     .status = Tá an córas seo le feiceáil mar { $aliases } agus socruithe Bluetooth oscailte.
     .connected = Ceangailte
     .connecting = Ag ceangal
@@ -108,9 +102,9 @@ bluetooth = Bluetooth
     .disconnect = Dícheangail
     .forget = Déan dearmad
     .dbus-error = Tharla earráid agus tú ag idirghníomhú le DBus: { $why }
-    .disabled = Tá an tseirbhís bluetooth díchumasaithe
-    .inactive = Níl an tseirbhís bluetooth gníomhach
-    .unknown = Níorbh fhéidir an tseirbhís bluetooth a ghníomhachtú. An bhfuil blueZ suiteáilte?
+    .disabled = Tá an tseirbhís Bluetooth díchumasaithe
+    .inactive = Níl an tseirbhís Bluetooth gníomhach
+    .unknown = Níorbh fhéidir an tseirbhís Bluetooth a ghníomhachtú. An bhfuil BlueZ suiteáilte?
 bluetooth-paired = Gléasanna ceangailte roimhe seo
     .connect = Ceangail
     .battery = { $percentage }% cadhnra
@@ -171,10 +165,9 @@ desktop = Deasc
 
 wallpaper = Cúlbhrat
     .change = Athraigh íomhá gach
-    .desc = Íomhánna cúlbhrat, dathanna, agus roghanna taispeántas sleamhnán.
     .fit = Cúlbhrat oiriúnach
     .folder-dialog = Roghnaigh fillteán cúlbhrat
-    .image-dialog = Roghnaigh íomhá cúlbhrat
+    .image-dialog = Roghnaigh íomhá chúlbhrat
     .plural = Cúlbhrat
     .same = Cúlbhrat céanna ar gach taispeáint
     .slide = Taispeántas sleamhnán
@@ -202,7 +195,6 @@ never = Riamh
 ## Desktop: Appearance
 
 appearance = Dealramh
-    .desc = Dathanna béime agus téamaíocht
 accent-color = Dath béime
 app-background = Cúlra fuinneoige
 auto = Uath
@@ -233,7 +225,7 @@ container-background = Cúlra coimeádán
 control-tint = Dath scátha comhpháirte rialaithe
     .desc = Úsáidtear é le haghaidh cúlra de chnaipí caighdeánacha, ionchuir chuardaigh, ionchuir téacs, agus comhpháirteanna comhchosúla
 frosted = Éifeacht gloine reatha ar chóras an úsáideora
-    .desc = Cuireann sé doiléiriú cúlra i bhfeidhm ar an bpainéal, an duga, na feidhmchláiríní, an lainseálaí, agus an leabharlann aip
+    .desc = Cuireann sé doiléiriú cúlra i bhfeidhm ar an bpainéal, an duga, na feidhmchláiríní, an lainseálaí, agus leabharlann feidhmchlár
 enable-export = Cuir an téama seo i bhfeidhm ar aipeanna GNOME.
     .desc = Ní thacaíonn gach tacar uirlisí le huath-athrú. B’fhéidir go mbeadh gá aipeanna nach bhfuil i COSMIC a atosú tar éis athrú téama.
 icon-theme = Téama deilbhíní
@@ -244,6 +236,19 @@ style = Stíl
     .round = Ciorclach
     .slightly-round = Ciorclach beagán
     .square = Cearnógach
+    .frosted-glass = Gloine sioctha
+    .frosted-system-interface = Comhéadan córais
+    .frosted-system-interface-desc = Cuireann sé gloine sioctha i bhfeidhm ar an Tosaitheoir, leabharlann feidhmchlár, forbhreathnú ar an spás oibre, rialuithe ar an scáileán
+    .frosted-windows = Fuinneoga
+    .frosted-windows-desc = Cuireann sé gloine sioctha i bhfeidhm ar fhuinneoga agus ar dhialóga
+    .frosted-panels = Painéil
+    .frosted-panels-desc = Cuireann sé gloine sioctha i bhfeidhm ar an bpainéal agus ar an duga
+    .frosted-applets = Feidhmchláiríní
+    .frosted-applets-desc = Cuireann sé gloine sioctha i bhfeidhm ar bhiachláir feidhmchláiríní ar an bpainéal agus ar an duga
+    .frosted-thickness = Tiús sioctha
+    .less = níos lú
+    .more = níos mó
+    .glass-opacity = Teimhneacht gloine
 interface-density = Dlús comhéadan
     .comfortable = Compordach
     .compact = Dlúth
@@ -262,12 +267,10 @@ monospace-font = Cló monospás
 ## Desktop: Notifications
 
 notifications = Fógraí
-    .desc = Ná cuir isteach, fógraí glasála scáileáin, agus socruithe in aghaidh an fheidhmchláir
 
 ## Desktop: Panel
 
 panel = Painéal
-    .desc = Barra córais phríomhúil do roghchláir agus feidhmchláiríní
 add = Cuir leis
 add-applet = Cuir feidhmchláirín leis
 all = Gach
@@ -277,8 +280,8 @@ end-segment = Deighleog deireadh
 large = Mór
 no-applets-found = Níor aimsíodh feidhmchláiríní...
 panel-bottom = Bun
-panel-left = Clé
-panel-right = Deas
+panel-left = Ar chlé
+panel-right = Ar dheis
 panel-top = Barr
 search-applets = Cuardach feidhmchláiríní...
 small = Beag
@@ -310,17 +313,15 @@ panel-missing = Tá cumraíocht an phainéil ar iarraidh
 ## Desktop: Dock
 
 dock = Duga
-    .desc = Barra roghnach le haghaidh aipeanna agus feidhmchláiríní
 
 ## Desktop: Window management
 
 window-management = Bainistíocht fuinneoige
-    .desc = Gníomh eochair Super, roghanna rialaithe fuinneog, agus roghanna breise tíliú fuinneog
 super-key = Gníomh na heochrach Super
     .launcher = Oscail lainseálaí
     .workspaces = Oscail spásanna oibre
     .applications = Oscail feidhmchláir
-    .disable = Díchumasaigh
+    .none = Dada
 edge-gravity = Imtharraingítear fuinneoga snámhacha chuig imill in aice láimhe
 window-controls = Rialuithe fuinneoige
     .maximize = Taispeáin an cnaipe uasmhéadaithe
@@ -334,7 +335,6 @@ focus-navigation = Nascleanúint fócais
 ## Desktop: Workspaces
 
 workspaces = Spásanna oibre
-    .desc = Treoshuíomh agus iompar spás oibre
 workspaces-behavior = Iompar spáis oibre
     .dynamic = Spásanna oibre dinimiciúla
     .dynamic-desc = Baintear spásanna oibre folamh go huathoibríoch.
@@ -361,10 +361,9 @@ color = Dath
     .sidebar = Próifílí dathanna
     .temperature = Teocht datha
 display = Taispeántais
-    .desc = Bainistigh taispeántais agus solas oíche
     .arrangement = Socrú taispeántais
     .arrangement-desc = Tarraing taispeántais chun iad a athshocrú
-    .enable = Cumasaigh an taispeáint
+    .enable = Cumasaigh an dtaispeáint
     .external = { $size } { $output } taispeáint sheachtrach
     .laptop = { $size } taispeáint ríomhaire glúine
     .options = Roghanna taispeána
@@ -410,7 +409,6 @@ dialog = Dialóg
 ## Sound
 
 sound = Fuaim
-    .desc = N/A
 sound-output = Aschur
     .volume = Toirt aschuir
     .device = Gléas aschuir
@@ -432,7 +430,6 @@ sound-applications = Feidhmchláir
 ## Power
 
 power = Cumhacht & ceallraí
-    .desc = Bainistigh socruithe cumhachta
 battery = Ceallraí
     .minute =
         { $value } { $value ->
@@ -477,7 +474,6 @@ power-saving = Roghanna coigilte cumhachta
 acceleration-desc = Coigeartaíonn sé íogaireacht rianaithe go huathoibríoch bunaithe ar luas
 disable-while-typing = Díchumasaigh agus tú ag clóscríobh
 input-devices = Gléasanna ionchuir
-    .desc = Gléasanna ionchuir
 primary-button = Cnaipe príomhúil
     .desc = Socraíonn sé ord na gcnaipí fisiciúla
     .left = Clé
@@ -496,7 +492,6 @@ fast = Tapa
 short = Gairid
 long = Fada
 keyboard = Méarchlár
-    .desc = Foinsí ionchuir, athrú, iontráil carachtar speisialta, aicearraí
 keyboard-sources = Foinsí ionchuir
     .desc = Is féidir foinsí ionchuir a athrú trí úsáid a bhaint as teaglaim eochair Super+Spás. Is féidir é seo a shaincheapadh sna socruithe aicearra méarchláir.
     .move-up = Bog suas
@@ -510,6 +505,22 @@ keyboard-special-char = Iontráil Carachtar Speisialta
     .compose = Eochair chumadóireachta
     .compose-desc = Ligeann an eochair chumadóireachta raon leathan carachtar a iontráil. Chun í a úsáid, brúigh an eochair chumadóireachta agus ansin sraith carachtar. Mar shampla, má bhrúnn tú an eochair chumadóireachta agus C agus o ina dhiaidh sin, cuirfear © isteach; agus má bhrúnn tú an eochair chumadóireachta agus a agus ‘ ina dhiaidh sin, cuirfear á isteach.
     .caps = Eochair Caps Lock
+    .ctrl = Ctrl
+    .ctrl-right = Ctrl ar Dheas
+    .swap-with-ctrl = Malartú le Ctrl
+    .alt = Alt
+    .alt-left = Alt ar Chlé
+    .alt-right = Alt ar Dheas
+    .super = Super
+    .super-left = Super ar Chlé
+    .super-right = Super ar Dheas
+    .menu = Eochair Roghchláir
+    .backspace = Spás Cúil
+    .escape = Éalú
+    .swap-with-escape = Malartú le hÉalú
+    .print-screen = Priontáil Scáileáin
+    .scroll-lock = Glas Scrollaithe
+    .none = Dada
 keyboard-typing-assist = Ag clóscríobh
     .repeat-rate = Ráta athuair
     .repeat-delay = Moill athrá
@@ -538,8 +549,8 @@ migrate-workspace-next = Aistrigh spás oibre go dtí an chéad aschur eile
 migrate-workspace =
     Imirce spás oibre chuig aschur { $direction ->
        *[down] síos
-        [left] clé
-        [right] deas
+        [left] ar chlé
+        [right] ar dheis
         [up] suas
     }
 navigate = Nascleanúint
@@ -561,19 +572,19 @@ nav-shortcuts = Nascleanúint
     .prev-workspace = Fócas ar spás oibre roimhe seo
     .next-workspace = Fócas ar an gcéad spás oibre eile
     .focus =
-        Fuinneog fócais { $direction ->
+        Fócas fuinneog { $direction ->
            *[down] síos
             [in] isteach
-            [left] clé
+            [left] ar chlé
             [out] amach
-            [right] deas
+            [right] ar dheis
             [up] suas
         }
     .output =
         Athraigh chuig aschur { $direction ->
            *[down] síos
-            [left] clé
-            [right] deas
+            [left] ar chlé
+            [right] ar dheis
             [up] suas
         }
     .workspace = Athraigh go spás oibre { $num }
@@ -587,24 +598,24 @@ manage-windows = Bainistigh fuinneoga
     .toggle-sticky = Scoránaigh an fhuinneog greamaitheach
 move-windows = Bog fuinneoga
     .direction =
-        Bog Fuinneog { $direction ->
+        Bog an fhuinneog { $direction ->
            *[down] síos
-            [left] clé
-            [right] deas
+            [left] ar chlé
+            [right] ar dheis
             [up] suas
         }
     .display =
-        Bog fuinneog monatóir amháin { $direction ->
+        Bog an fhuinneog monatóir amháin { $direction ->
            *[down] síos
-            [left] clé
-            [right] deas
+            [left] ar chlé
+            [right] ar dheis
             [up] suas
         }
     .workspace =
-        Bog fuinneog spás oibre amháin { $direction ->
+        Bog an fhuinneog spás oibre amháin { $direction ->
            *[below] thíos
-            [left] clé
-            [right] deas
+            [left] ar chlé
+            [right] ar dheis
             [above] thuas
         }
     .workspace-num = Bog an fhuinneog go spás oibre { $num }
@@ -658,9 +669,8 @@ zoom-out = Súmáil amach
 ## Input: Mouse
 
 mouse = Luch
-    .desc = Luas luch, luasghéarú, scrollú nádúrtha
     .speed = Luas luch
-    .acceleration = Cumasaigh luasghéarú na luiche
+    .acceleration = Cumasaigh luasghéarú luiche
 
 ## Input: Touchpad
 
@@ -673,7 +683,6 @@ tap-to-click = Tapáil le cliceáil
     .desc = Cumasaíonn sé tapáil le méar amháin le haghaidh cliceáil phríomhúil, tapáil le dhá mhéar le haghaidh cliceáil thánaisteach, agus tapáil le trí mhéar le haghaidh cliceáil lár
 touchpad = Ceap tadhaill
     .acceleration = Cumasaigh luasghéarú an ceap tadhaill
-    .desc = Luas an ceap tadhaill, roghanna cliceáil, gothaí
     .speed = Luas an ceap tadhaill
 
 ## Input: Gestures
@@ -694,9 +703,7 @@ open-workspaces-view = Oscail radharc spásanna oibre
 ## Time & Language
 
 time = Am & teanga
-    .desc = N/A
 time-date = Dáta & am
-    .desc = Crios ama, socruithe uathoibríocha cloig, agus formáidiú ama
     .auto = Socraigh go huathoibríoch
     .auto-ntp = Nuashonrófar an dáta agus an t-am go huathoibríoch nuair a shocrófar an crios ama
 time-zone = Crios ama
@@ -712,7 +719,6 @@ time-format = Formáid dáta & ama
     .sunday = Domhnach
     .monday = Luan
 time-region = Réigiún & teanga
-    .desc = Formáidigh dátaí, amanna agus uimhreacha bunaithe ar do réigiún
 formatting = Formáidiú
     .dates = Dátaí
     .time = Am
@@ -734,7 +740,6 @@ applications = Feidhmchláir
 ## Applications: Default Applications
 
 default-apps = Feidhmchláir réamhshocraithe
-    .desc = Brabhsálaí gréasáin réamhshocraithe, cliant ríomhphoist, brabhsálaí comhad, agus feidhmchláir eile
     .web-browser = Brabhsálaí gréasáin
     .file-manager = Bainisteoir comhad
     .mail-client = Cliant ríomhphoist
@@ -750,7 +755,6 @@ default-apps = Feidhmchláir réamhshocraithe
 ## Applications: Startup Applications
 
 startup-apps = Feidhmchláir tosaithe
-    .desc = Cumraigh feidhmchláir a ritheann ar logáil isteach.
     .add = Cuir feidhmchlár leis
     .user = Lainseáil feidhmchláir nuair a logálann tú isteach
     .none = Níor cuireadh aon fheidhmchláir tosaithe leis
@@ -761,9 +765,8 @@ startup-apps = Feidhmchláir tosaithe
 ## Applications: Legacy Applications
 
 legacy-applications = Comhoiriúnacht feidhmchláir X11
-    .desc = Scálú feidhmchlár córais fuinneoige X11 agus aicearraí domhanda
 legacy-app-global-shortcuts = Aicearraí domhanda i feidhmchláir X11
-    .desc = Le haicearraí domhanda, is féidir le feidhmchláir eile aitheantas a thabhairt do bhuillí eochracha agus d’imeachtaí cnaipe luiche a dhéantar in aipeanna le haghaidh gnéithe cosúil le brúigh-chun-caint nó brúigh-chun-balbhú. De réir réamhshocraithe, tá sé seo díchumasaithe in aipeanna X11 lena chinntiú nach féidir le feidhmchláir eile monatóireacht a dhéanamh ar imeachtaí méarchláir agus luiche ina bhfuil faisnéis íogair.
+    .desc = Le haicearraí domhanda, is féidir le feidhmchláir eile aitheantas a thabhairt do bhuillí eochracha agus d’imeachtaí cnaipe luiche a dhéantar in feidhmchláir le haghaidh gnéithe cosúil le brúigh-chun-caint nó brúigh-chun-balbhú. De réir réamhshocraithe, tá sé seo díchumasaithe in feidhmchláir X11 lena chinntiú nach féidir le feidhmchláir eile monatóireacht a dhéanamh ar imeachtaí méarchláir agus luiche ina bhfuil faisnéis íogair.
     .none = Gan eochracha
     .modifiers = Mionathraitheoirí (Super, Shift, Control, Alt)
     .combination = Gach eochair agus na modhnóirí Super, Control nó Alt á mbrú
@@ -786,7 +789,6 @@ system = Córas & cuntais
 ## System: About
 
 about = Maidir
-    .desc = Ainm gléis, faisnéis crua-earraí, réamhshocruithe córais oibriúcháin
 about-device = Ainm an ghléis
     .desc = Feictear an t-ainm seo ar líonraí nó ar ghléasanna Bluetooth eile
 about-hardware = Crua-earraí
@@ -807,12 +809,10 @@ about-related = Socruithe gaolmhara
 ## System: Firmware
 
 firmware = Dochtearraí
-    .desc = Sonraí maidir le dochtearraí
 
 ## System: Users
 
 users = Úsáideoirí
-    .desc = Fíordheimhniú agus cuntais úsáideora
     .admin = Riarthóir
     .standard = Caighdeán
     .profile-add = Roghnaigh íomhá phróifíl
@@ -843,3 +843,108 @@ shadows-tiling = Fuinneoga tílithe
     .clip = Meaitseáil coirnéil an chórais
     .shadow = Cuir scáthanna i bhfeidhm
 shadow-and-corners = Scáth agus coirnéil fuinneoige
+workspaces-overview = Forbhreathnú ar Spásanna Oibre
+    .action-on-typing = Gníomh ar chlóscríobh
+    .none = Dada
+    .launcher = Oscail an Lainseálaí
+    .applications = Oscail Feidhmchláir
+xdg-entry-wireless = Wi-Fi
+xdg-entry-a11y = Inrochtaineacht
+xdg-entry-desktop-keywords = COSMIC;Deasc;
+xdg-entry-wireless-keywords = COSMIC;WiFi;Wi-Fi;Líonra;Ceangal;
+xdg-entry-about-keywords = COSMIC;Maidir
+xdg-entry-desktop = Deasc
+xdg-entry-date-time-keywords = COSMIC;Am;Crios;
+xdg-entry-wallpaper = Cúlbhrat
+xdg-entry-displays = Taispeántais
+xdg-entry-date-time = Dáta & Am
+xdg-entry-bluetooth-keywords = COSMIC;Bluetooth;
+xdg-entry-applications = Feidhmchláir
+xdg-entry-default-apps-keywords = COSMIC;Réamhshocrú;Feidhmchlár
+xdg-entry-keywords = COSMIC;Socruithe;
+xdg-entry-about = Maidir
+xdg-entry-appearance = Dealramh
+xdg-entry-workspaces = Spásanna Oibre
+xdg-entry-mouse-keywords = COSMIC;Luch;Luasghéarú;Scrolláil;
+xdg-entry-keyboard-comment = Foinsí ionchuir, athrú, iontráil carachtar speisialta, aicearraí
+xdg-entry-mouse = Luch
+xdg-entry-dock-keywords = COSMIC;Duga;Painéal;Feidhmchláirín
+xdg-entry-mouse-comment = Luas luiche, luasghéarú, agus scrollú nádúrtha
+xdg-entry-keyboard = Méarchlár
+xdg-entry-network = Líonra & Gan Sreang
+xdg-entry-input-comment = Socruithe méarchláir agus luiche
+xdg-entry-dock = Duga
+xdg-entry-input-keywords = COSMIC;Ionchur;Méarchlár;Luch;Luchóga;
+xdg-entry-input = Gléasanna Ionchuir
+xdg-entry-keyboard-keywords = COSMIC;Méarchlár;Ionchur;Foinse;Aicearraí;
+xdg-entry-network-comment = Bainistigh naisc líonra
+xdg-entry-touchpad = Ceap tadhaill
+xdg-entry-wired = Sreangaithe
+xdg-entry-startup-apps-comment = Cumraigh feidhmchláir a ritheann ar logáil isteach
+xdg-entry-region-language = Réigiún & Teanga
+xdg-entry-bluetooth-comment = Bainistigh gléasanna Bluetooth
+xdg-entry-notifications-keywords = COSMIC;Fógra;Glasáil;
+xdg-entry-startup-apps-keywords = COSMIC;Tosú;Feidhmchlár;
+xdg-entry-default-apps-comment = Brabhsálaí gréasáin réamhshocraithe, cliant ríomhphoist, brabhsálaí comhad, agus feidhmchláir eile
+xdg-entry-wired-keywords = COSMIC;Sreangaithe;Líonra Ceantair Áitiúil;Líonra;Nasc;
+xdg-entry-power = Cumhacht & Ceallraí
+xdg-entry-appearance-keywords = COSMIC;Béim;Dath;Deilbhín;Cló;Téama
+xdg-entry-system = Córas & Cuntais
+xdg-entry-panel-keywords = COSMIC;Painéal;Feidhmchláirín
+xdg-entry-window-management = Bainistíocht Fuinneog
+xdg-entry-time-language-comment = Bainistigh dáta an chórais, am, réigiún agus teanga
+xdg-entry-x11-applications-keywords = COSMIC;X11;Feidhmchlár;Cluiche;Comhoiriúnacht;
+xdg-entry-displays-comment = Bainistigh socruithe cumraíochta taispeána
+xdg-entry-touchpad-keywords = COSMIC;Ceap tadhaill;Gothaí;
+xdg-entry-time-language = Am & Teanga
+xdg-entry-users = Úsáideoirí
+xdg-entry-system-keywords = COSMIC;Córas;Eolas;Cuntais;Dochtearraí;
+xdg-entry-default-apps = Feidhmchláir Réamhshocraithe
+xdg-entry-applications-comment = Feidhmchláir réamhshocraithe, feidhmchláir tosaithe, agus socruithe comhoiriúnachta feidhmchlár X11
+xdg-entry-panel = Painéal
+xdg-entry-notifications = Fógraí
+xdg-entry-a11y-keywords = COSMIC;Inrochtaineacht;A11y;Scáileán;Léitheoir;Formhéadaitheoir;Codarsnacht;Dath;
+xdg-entry-wireless-comment = Naisc Wi-Fi agus próifílí nasc
+xdg-entry-desktop-comment = Socruithe cúlbhrat, cuma, painéal, duga, bainistíocht fuinneoga agus spás oibre
+xdg-entry-a11y-comment = Léitheoir scáileáin, formhéadaitheoir, ardchodarsnacht, agus scagairí datha
+xdg-entry-users-comment = Fíordheimhniú agus cuntais úsáideora
+xdg-entry-dock-comment = Barra roghnach le haghaidh aipeanna agus feidhmchláiríní
+xdg-entry-network-keywords = COSMIC;Líonra;Gan Sreang;WiFi;VPN;
+xdg-entry-wallpaper-comment = Íomhánna cúlbhrat, dathanna agus roghanna taispeántais sleamhnán
+xdg-entry-startup-apps = Feidhmchláir tosaithe
+xdg-entry-workspaces-keywords = COSMIC;Spás Oibre;Treoshuíomh;Forbhreathnú;Monatóir;
+xdg-entry-system-comment = Faisnéis chórais, cuntais, agus nuashonruithe dochtearraí
+xdg-entry-x11-applications-comment = Scálú feidhmchlár chóras fuinneoga X11, príomhthaispeántas, agus aicearraí domhanda
+xdg-entry-region-language-comment = Formáidigh dátaí, amanna agus uimhreacha bunaithe ar do réigiún
+xdg-entry-wallpaper-keywords = COSMIC;Cúlbhrat;Cúlra;Taispeántas sleamhnán;
+xdg-entry-users-keywords = COSMIC;Úsáideoir;Cuntas;
+xdg-entry-about-comment = Ainm gléis, faisnéis crua-earraí, réamhshocruithe córais oibriúcháin
+xdg-entry-vpn-keywords = COSMIC;VPN;Líonra;Nasc;OpenVPN;OpenConnect;
+xdg-entry-appearance-comment = Dathanna béime agus téamaí
+xdg-entry-time-language-keywords = COSMIC;Córas;Am;Dáta;Réigiún;Teanga;
+xdg-entry-comment = Feidhmchlár socruithe don deasc COSMIC
+xdg-entry-notifications-comment = Ná Cuir Isteach, fógraí glasála scáileáin, agus socruithe in aghaidh an fheidhmchláir
+xdg-entry-sound-keywords = COSMIC;Fuaim;Cloisteáil;Foláireamh;Pipewire;
+xdg-entry-power-keywords = COSMIC;Cumhacht;Ceallraí
+xdg-entry-region-language-keywords = COSMIC;Réigiún;Teanga;Dáta;Formáid;Am;Suíomh;Logánú;
+xdg-entry-applications-keywords = COSMIC;Réamhshocrú;Feidhmchlár;Tosaithe;X11;Comhoiriúnacht
+xdg-entry-sound-comment = Socruithe fuaime do ghléasanna, d’fholáirimh agus d’fheidhmchláir
+xdg-entry-touchpad-comment = Luas an ceap tadhaill, roghanna cliceáil, agus gothaí
+xdg-entry-vpn-comment = Naisc VPN agus próifílí nasc
+xdg-entry-window-management-keywords = COSMIC;Fuinneog;Bainistíocht;Tíliú;Super;Eochair;
+xdg-entry-workspaces-comment = Treoshuíomh, forbhreathnú, agus iompar il-mhonatóireachta ar an spás oibre
+xdg-entry-panel-comment = Barra córais phríomhúil le haghaidh biachláir agus feidhmchláiríní
+xdg-entry-sound = Fuaim
+xdg-entry-power-comment = Modhanna cumhachta agus roghanna coigilte cumhachta
+xdg-entry-displays-keywords = COSMIC;Taispeántas;
+xdg-entry-date-time-comment = Crios ama, socruithe uathoibríocha cloig, agus formáidiú ama
+xdg-entry-x11-applications = Comhoiriúnacht Feidhmchláir X11
+xdg-entry-window-management-comment = Gníomh na sár-eochrach, roghanna rialaithe fuinneoige, agus roghanna breise tíleála fuinneoige
+xdg-entry-wired-comment = Naisc sreangaithe agus próifílí nasc
+no-search-results = Níl aon líonra ag teacht leis an gcuardach seo.
+workspaces-navigation = Nascleanúint
+    .wraparound = Bog idir an chéad spás oibre agus an spás oibre deireanach ag baint úsáide as aicearraí méarchláir agus gothaí
+bluetooth-display-passkey = Péireáil Bluetooth
+    .description = Clóscríobh an eochair phas seo a leanas ar { $device }, ansin brúigh Iontráil
+bluetooth-display-pin = Péireáil Bluetooth
+    .description = Clóscríobh an PIN seo a leanas ar { $device }, ansin brúigh Iontráil

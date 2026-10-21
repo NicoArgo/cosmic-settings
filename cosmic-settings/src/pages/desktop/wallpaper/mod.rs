@@ -7,38 +7,28 @@ pub mod widgets;
 pub use config::Config;
 use url::Url;
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+use cosmic::app::ContextDrawer;
 #[cfg(feature = "xdg-portal")]
 use cosmic::dialog::file_chooser;
-use cosmic::{
-    Apply, Element, Task,
-    widget::{ColorPickerModel, color_picker::ColorPickerUpdate, icon},
+use cosmic::iced::core::text::{Ellipsize, EllipsizeHeightLimit};
+use cosmic::iced::runtime::core::image::Handle as ImageHandle;
+use cosmic::iced::{Alignment, Color, Length, Subscription, window};
+use cosmic::widget::color_picker::ColorPickerUpdate;
+use cosmic::widget::segmented_button::{self, SingleSelectModel};
+use cosmic::widget::space::horizontal as horizontal_space;
+use cosmic::widget::{
+    ColorPickerModel, button, dropdown, icon, list_column, row, settings, tab_bar, text,
 };
-use cosmic::{app::ContextDrawer, iced_runtime::core::image::Handle as ImageHandle};
-use cosmic::{
-    iced::Subscription,
-    widget::{
-        button, dropdown, list_column, row,
-        segmented_button::{self, SingleSelectModel},
-        settings, tab_bar, text, toggler,
-    },
-};
-use cosmic::{
-    iced::{Alignment, Color, Length, window},
-    surface,
-};
+use cosmic::{Apply, Element, Task, surface};
 use cosmic_bg_config::Source;
-use cosmic_settings_page::Section;
-use cosmic_settings_page::{self as page, section};
+use cosmic_settings_page::{self as page, Section, section};
 use cosmic_settings_wallpaper::{self as wallpaper, Entry, ScalingMode};
 use image::imageops::FilterType::Lanczos3;
 use image::{ImageBuffer, Rgba};
-use slab::Slab;
 use slotmap::{DefaultKey, Key, SecondaryMap, SlotMap};
 
 use crate::subscription::WallpaperEvent;
@@ -75,7 +65,7 @@ pub enum Message {
     AddFolder(Arc<Result<Url, file_chooser::Error>>),
     /// Adds a new image file the system wallpaper folder.
     #[cfg(feature = "xdg-portal")]
-    AddFile(Arc<Result<Url, file_chooser::Error>>),
+    AddFiles(Arc<Result<Vec<Url>, file_chooser::Error>>),
     /// Cache currently displayed image.
     CacheDisplayImage,
     /// Selects an option in the category dropdown menu.
@@ -112,7 +102,7 @@ pub enum Message {
     Slideshow(bool),
     /// State change from cosmic-bg
     UpdateState(cosmic_bg_config::state::State),
-    Surface(surface::Action),
+    Surface(surface::Action<crate::app::Message>),
 }
 
 impl From<Message> for crate::app::Message {
@@ -211,7 +201,7 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> page::Info {
         page::Info::new("wallpaper", "preferences-desktop-wallpaper-symbolic")
             .title(fl!("wallpaper"))
-            .description(fl!("wallpaper", "desc"))
+            .description(fl!("xdg-entry-wallpaper-comment"))
     }
 
     fn on_enter(&mut self) -> Task<crate::pages::Message> {
@@ -692,7 +682,10 @@ impl Page {
                 .width(Length::Fixed(SIMULATED_WIDTH as f32))
                 .into(),
 
-            None => cosmic::widget::Space::new(SIMULATED_WIDTH, SIMULATED_HEIGHT).into(),
+            None => cosmic::widget::Space::new()
+                .width(Length::Fixed(SIMULATED_WIDTH as f32))
+                .height(Length::Fixed(SIMULATED_HEIGHT as f32))
+                .into(),
         }
     }
 
@@ -794,11 +787,11 @@ impl Page {
                         .title(fl!("wallpaper", "image-dialog"))
                         .accept_label(fl!("dialog-add"))
                         .modal(false)
-                        .open_file()
+                        .open_files()
                         .await
-                        .map(|response| response.url().to_owned());
+                        .map(|response| response.urls().to_vec());
 
-                    let message = Message::AddFile(Arc::new(dialog_result));
+                    let message = Message::AddFiles(Arc::new(dialog_result));
                     let page_message = crate::pages::Message::DesktopWallpaper(message);
                     crate::Message::PageMessage(page_message)
                 });
@@ -869,6 +862,11 @@ impl Page {
             #[cfg(feature = "xdg-portal")]
             Message::AddFolder(result) => {
                 let path = match dialog_response(result) {
+                    DialogResponse::Paths(_) => {
+                        // TODO find if there is a use of multi folder addition.
+                        tracing::warn!("unexpected multi-path response for folder dialog");
+                        return Task::none();
+                    }
                     DialogResponse::Path(path) => path,
                     DialogResponse::Error(why) => {
                         tracing::error!(why, "dialog response error");
@@ -894,27 +892,30 @@ impl Page {
             }
 
             #[cfg(feature = "xdg-portal")]
-            Message::AddFile(result) => {
-                let path = match dialog_response(result) {
-                    DialogResponse::Path(path) => path,
+            Message::AddFiles(result) => {
+                let paths = match dialog_response_multi(result) {
+                    DialogResponse::Paths(paths) => paths,
+                    DialogResponse::Path(path) => vec![path], // not really but for the sake of consistency..
                     DialogResponse::Error(why) => {
                         tracing::error!(why, "dialog response error");
                         return Task::none();
                     }
                 };
 
-                if path.is_file() {
+                let tasks = paths.into_iter().filter(|path| path.is_file()).map(|path| {
                     tracing::info!(?path, "opening custom image");
 
                     // Loads a single custom image and its thumbnail for display in the backgrounds view.
-                    return cosmic::Task::future(async move {
+                    cosmic::Task::future(async move {
                         let result = wallpaper::load_image_with_thumbnail(path);
 
                         let message = Message::ImageAdd(result.map(Arc::new));
                         let page_message = crate::pages::Message::DesktopWallpaper(message);
                         crate::Message::PageMessage(page_message)
-                    });
-                }
+                    })
+                });
+
+                return Task::batch(tasks);
             }
 
             Message::Event(event) => match event {
@@ -1154,6 +1155,10 @@ impl Context {
     }
 
     fn add_custom_image(&mut self, path: PathBuf, display: Image, selection: ImageHandle) {
+        if self.paths.values().any(|p| p == &path) {
+            return;
+        }
+
         let key = self.paths.insert(path);
         self.is_custom.insert(key, ());
         self.display_images.insert(key, display);
@@ -1185,12 +1190,12 @@ impl Context {
 
 #[allow(clippy::too_many_lines)]
 pub fn settings() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let same_label = descriptions.insert(fl!("wallpaper", "same"));
-    let fit_label = descriptions.insert(fl!("wallpaper", "fit"));
-    let slide_label = descriptions.insert(fl!("wallpaper", "slide"));
-    let change_label = descriptions.insert(fl!("wallpaper", "change"));
+    crate::slab!(descriptions {
+        same_label = fl!("wallpaper", "same");
+        fit_label = fl!("wallpaper", "fit");
+        slide_label = fl!("wallpaper", "slide");
+        change_label = fl!("wallpaper", "change");
+    });
 
     Section::default()
         .descriptions(descriptions)
@@ -1249,6 +1254,7 @@ pub fn settings() -> Section<crate::pages::Message> {
             } else if page.show_tab_bar {
                 let element = tab_bar::horizontal(&page.outputs)
                     .button_alignment(Alignment::Center)
+                    .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
                     .on_activate(Message::Output);
 
                 children.push(element.into());
@@ -1265,18 +1271,17 @@ pub fn settings() -> Section<crate::pages::Message> {
 
             children.push({
                 let mut column = list_column()
-                    .add(settings::item(
-                        &descriptions[same_label],
-                        toggler(page.wallpaper_service_config.same_on_all)
-                            .on_toggle(Message::SameWallpaper),
+                    .add(settings::item::builder(&descriptions[same_label]).toggler(
+                        page.wallpaper_service_config.same_on_all,
+                        Message::SameWallpaper,
                     ))
                     .add(settings::item(&descriptions[fit_label], wallpaper_fit));
 
                 if show_slideshow_toggle {
-                    column = column.add(settings::item(
-                        &descriptions[slide_label],
-                        toggler(slideshow_enabled).on_toggle(Message::Slideshow),
-                    ));
+                    column = column.add(
+                        settings::item::builder(&descriptions[slide_label])
+                            .toggler(slideshow_enabled, Message::Slideshow),
+                    );
                 }
 
                 // The rotation frequency dropdown should only be shown when the slideshow is enabled.
@@ -1339,7 +1344,7 @@ pub fn settings() -> Section<crate::pages::Message> {
                         },
                     )
                     .push(category_selection)
-                    .push(cosmic::widget::horizontal_space())
+                    .push(horizontal_space())
                     .push_maybe(add_button)
                     .into(),
             );
@@ -1420,27 +1425,33 @@ pub fn settings() -> Section<crate::pages::Message> {
 enum DialogResponse {
     Error(String),
     Path(PathBuf),
+    Paths(Vec<PathBuf>),
+}
+
+#[cfg(feature = "xdg-portal")]
+fn unwrap_dialog_response<T>(result: Arc<Result<T, file_chooser::Error>>) -> Result<T, String> {
+    let Some(result) = Arc::into_inner(result) else {
+        return Err(String::from("Arc::into_inner returned None"));
+    };
+
+    result.map_err(|why| {
+        let mut source: &dyn std::error::Error = &why;
+        let mut string = format!("open dialog subscription errored\n    cause: {source}");
+
+        while let Some(new_source) = source.source() {
+            string.push_str(&format!("\n    cause: {new_source}"));
+            source = new_source;
+        }
+
+        string
+    })
 }
 
 #[cfg(feature = "xdg-portal")]
 fn dialog_response(result: Arc<Result<Url, file_chooser::Error>>) -> DialogResponse {
-    let Some(result) = Arc::into_inner(result) else {
-        return DialogResponse::Error(String::from("Arc::into_inner returned None"));
-    };
-
-    let selection = match result {
-        Ok(response) => response,
-        Err(why) => {
-            let mut source: &dyn std::error::Error = &why;
-            let mut string = format!("open dialog subscription errored\n    cause: {source}");
-
-            while let Some(new_source) = source.source() {
-                string.push_str(&format!("\n    cause: {new_source}"));
-                source = new_source;
-            }
-
-            return DialogResponse::Error(string);
-        }
+    let selection = match unwrap_dialog_response(result) {
+        Ok(selection) => selection,
+        Err(why) => return DialogResponse::Error(why),
     };
 
     let Ok(path) = selection.to_file_path() else {
@@ -1448,4 +1459,23 @@ fn dialog_response(result: Arc<Result<Url, file_chooser::Error>>) -> DialogRespo
     };
 
     DialogResponse::Path(path)
+}
+
+#[cfg(feature = "xdg-portal")]
+fn dialog_response_multi(result: Arc<Result<Vec<Url>, file_chooser::Error>>) -> DialogResponse {
+    let selections = match unwrap_dialog_response(result) {
+        Ok(selections) => selections,
+        Err(why) => return DialogResponse::Error(why),
+    };
+
+    let mut paths = Vec::with_capacity(selections.len());
+    for selection in selections {
+        let Ok(path) = selection.to_file_path() else {
+            tracing::warn!("not a valid file path: {}", selection.path());
+            continue;
+        };
+        paths.push(path);
+    }
+
+    DialogResponse::Paths(paths)
 }

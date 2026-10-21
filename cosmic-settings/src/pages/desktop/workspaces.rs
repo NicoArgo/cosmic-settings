@@ -3,17 +3,11 @@
 
 // TODO make settings work
 
-use cosmic::{
-    Apply, Element,
-    cosmic_config::{self, ConfigGet, ConfigSet},
-    iced::Length,
-    surface,
-    widget::{self, radio, settings, text},
-};
+use cosmic::cosmic_config::{self, ConfigGet, ConfigSet};
+use cosmic::widget::{self, settings};
+use cosmic::{Apply, Element, surface};
 use cosmic_comp_config::workspace::{Action, WorkspaceConfig, WorkspaceLayout, WorkspaceMode};
-use cosmic_settings_page::Section;
-use cosmic_settings_page::{self as page, section};
-use slab::Slab;
+use cosmic_settings_page::{self as page, Section, section};
 use slotmap::SlotMap;
 use tracing::error;
 
@@ -22,9 +16,10 @@ pub enum Message {
     SetActionOnTyping(usize),
     SetWorkspaceMode(WorkspaceMode),
     SetWorkspaceLayout(WorkspaceLayout),
+    SetWorkspaceWraparound(bool),
     SetShowName(bool),
     SetShowNumber(bool),
-    Surface(surface::Action),
+    Surface(surface::Action<crate::app::Message>),
 }
 
 pub struct Page {
@@ -89,13 +84,14 @@ impl page::Page<crate::pages::Message> for Page {
             sections.insert(action_on_typing()),
             sections.insert(multi_behavior()),
             sections.insert(workspace_orientation()),
+            sections.insert(workspace_navigation()),
         ])
     }
 
     fn info(&self) -> page::Info {
         page::Info::new("workspaces", "preferences-workspaces-symbolic")
             .title(fl!("workspaces"))
-            .description(fl!("workspaces", "desc"))
+            .description(fl!("xdg-entry-workspaces-comment"))
     }
 }
 
@@ -125,6 +121,10 @@ impl Page {
                 self.comp_workspace_config.action_on_typing = into_action(value);
                 self.action_on_typing_active =
                     into_active_selection(&self.comp_workspace_config.action_on_typing);
+                self.save_comp_config();
+            }
+            Message::SetWorkspaceWraparound(value) => {
+                self.comp_workspace_config.workspace_wraparound = value;
                 self.save_comp_config();
             }
             Message::SetShowName(value) => {
@@ -164,9 +164,9 @@ fn into_action(value: usize) -> Action {
 }
 
 pub fn action_on_typing() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let action_on_typing = descriptions.insert(fl!("workspaces-overview", "action-on-typing"));
+    crate::slab!(descriptions {
+        action_on_typing = fl!("workspaces-overview", "action-on-typing");
+    });
 
     Section::default()
         .title(fl!("workspaces-overview"))
@@ -198,10 +198,10 @@ pub fn action_on_typing() -> Section<crate::pages::Message> {
 }
 
 fn multi_behavior() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let span = descriptions.insert(fl!("workspaces-multi-behavior", "span"));
-    let separate = descriptions.insert(fl!("workspaces-multi-behavior", "separate"));
+    crate::slab!(descriptions {
+        span = fl!("workspaces-multi-behavior", "span");
+        separate = fl!("workspaces-multi-behavior", "separate");
+    });
 
     Section::default()
         .title(fl!("workspaces-multi-behavior"))
@@ -210,36 +210,26 @@ fn multi_behavior() -> Section<crate::pages::Message> {
             let descriptions = &section.descriptions;
             settings::section()
                 .title(&section.title)
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[span]),
-                        WorkspaceMode::Global,
-                        Some(page.comp_workspace_config.workspace_mode),
-                        Message::SetWorkspaceMode,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[separate]),
-                        WorkspaceMode::OutputBound,
-                        Some(page.comp_workspace_config.workspace_mode),
-                        Message::SetWorkspaceMode,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
+                .add(settings::item::builder(&descriptions[span]).radio(
+                    WorkspaceMode::Global,
+                    Some(page.comp_workspace_config.workspace_mode),
+                    Message::SetWorkspaceMode,
+                ))
+                .add(settings::item::builder(&descriptions[separate]).radio(
+                    WorkspaceMode::OutputBound,
+                    Some(page.comp_workspace_config.workspace_mode),
+                    Message::SetWorkspaceMode,
+                ))
                 .apply(Element::from)
                 .map(crate::pages::Message::DesktopWorkspaces)
         })
 }
 
 fn workspace_orientation() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let vertical = descriptions.insert(fl!("workspaces-orientation", "vertical"));
-    let horizontal = descriptions.insert(fl!("workspaces-orientation", "horizontal"));
+    crate::slab!(descriptions {
+        vertical = fl!("workspaces-orientation", "vertical");
+        horizontal = fl!("workspaces-orientation", "horizontal");
+    });
 
     Section::default()
         .title(fl!("workspaces-orientation"))
@@ -248,26 +238,37 @@ fn workspace_orientation() -> Section<crate::pages::Message> {
             let descriptions = &section.descriptions;
             settings::section()
                 .title(&section.title)
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[vertical]),
-                        WorkspaceLayout::Vertical,
-                        Some(page.comp_workspace_config.workspace_layout),
-                        Message::SetWorkspaceLayout,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[horizontal]),
-                        WorkspaceLayout::Horizontal,
-                        Some(page.comp_workspace_config.workspace_layout),
-                        Message::SetWorkspaceLayout,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
+                .add(settings::item::builder(&descriptions[vertical]).radio(
+                    WorkspaceLayout::Vertical,
+                    Some(page.comp_workspace_config.workspace_layout),
+                    Message::SetWorkspaceLayout,
+                ))
+                .add(settings::item::builder(&descriptions[horizontal]).radio(
+                    WorkspaceLayout::Horizontal,
+                    Some(page.comp_workspace_config.workspace_layout),
+                    Message::SetWorkspaceLayout,
+                ))
+                .apply(Element::from)
+                .map(crate::pages::Message::DesktopWorkspaces)
+        })
+}
+
+fn workspace_navigation() -> Section<crate::pages::Message> {
+    crate::slab!(descriptions {
+        description = fl!("workspaces-navigation", "wraparound");
+    });
+
+    Section::default()
+        .title(fl!("workspaces-navigation"))
+        .descriptions(descriptions)
+        .view::<Page>(move |_binder, page, section| {
+            let descriptions = &section.descriptions;
+            settings::section()
+                .title(&section.title)
+                .add(settings::item::builder(&descriptions[description]).toggler(
+                    page.comp_workspace_config.workspace_wraparound,
+                    Message::SetWorkspaceWraparound,
+                ))
                 .apply(Element::from)
                 .map(crate::pages::Message::DesktopWorkspaces)
         })

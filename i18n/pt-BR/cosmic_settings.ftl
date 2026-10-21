@@ -6,13 +6,6 @@ number = { $number }
 
 ## Network & Wireless
 
-connections-and-profiles =
-    { $variant ->
-        [wired] Conexões cabeadas
-        [wifi] Conexões Wi-Fi
-        [vpn] Conexões VPN
-       *[other] Conexões desconhecidas
-    } e perfis de conexão.
 add-network = Adicionar rede
     .profile = Adicionar perfil
 add-vpn = Adicionar VPN
@@ -36,7 +29,7 @@ visible-networks = Redes visíveis
 identity = Identidade
 auth-dialog = Autenticação necessária
     .vpn-description = Digite o usuário e a senha exigidos pelo serviço de VPN.
-    .wifi-description = Digite a senha ou chave de criptografia. Você também pode conectar pressionando o botão “WPS” no roteador.
+    .wifi-description = Digite a senha ou chave de criptografia. Você também pode conectar pressionando o botão "WPS" no roteador.
 forget-dialog = Esquecer esta rede Wi-Fi?
     .description = Você precisará informar uma senha novamente para usar esta rede no futuro.
 network-device-state =
@@ -67,8 +60,10 @@ vpn-error = Erro de VPN
     .connect = Falha ao conectar na VPN
     .connection-editor = Falha de edição da conexão
     .connection-settings = Falha ao obter as configurações das conexões ativas
+    .openvpn-config-path = Caminho de arquivo inválido para a configuração do OpenVPN
+    .openvpn-config-path-desc = O arquivo escolhido deve estar em um sistema de arquivos local.
     .updating-state = Falha ao atualizar o status do gerenciador de rede
-    .wireguard-config-path = Caminho do arquivo inválido para a configuração do WireGuard
+    .wireguard-config-path = Caminho de arquivo inválido para a configuração do WireGuard
     .wireguard-config-path-desc = O arquivo selecionado deve estar em um sistema de arquivos local.
     .wireguard-device = Falha ao criar um dispositivo WireGuard
     .with-password =
@@ -77,7 +72,7 @@ vpn-error = Erro de VPN
             [password] a senha
             [password-flags] os sinalizadores da senha
         } da VPN com nmcli
-wired = Rede Cabeada
+wired = Rede cabeada
     .adapter = Adaptador de rede cabeada { $id }
     .connections = Conexões de rede cabeada
     .devices = Dispositivos de rede cabeada
@@ -90,8 +85,8 @@ wireguard-dialog = Adicionar Dispositivo WireGuard
 
 ## Networking: Online Accounts
 
-online-accounts = Contas Online
-    .desc = Adicionar contas, IMAP e SMTP, logins empresariais
+online-accounts = Contas online
+    .desc = Adicionar contas, IMAP e SMTP, sessões corporativas
 
 # Bluetooth
 
@@ -99,7 +94,6 @@ activate = Ativar
 confirm = Confirmar
 enable = Habilitar
 bluetooth = Bluetooth
-    .desc = Gerenciar dispositivos Bluetooth
     .status = Este sistema estará visível como { $aliases } enquanto a configuração do Bluetooth estiver aberta.
     .connected = Conectado
     .connecting = Conectando
@@ -130,6 +124,8 @@ accessibility = Acessibilidade
     .high-contrast = Modo de alto contraste
     .invert-colors = Inverter cores
     .color-filters = Filtros de cor
+    .shake-cursor = Agite o ponteiro para encontrá-lo
+    .shake-cursor-desc = Agite rapidamente o mouse para ampliar temporariamente o ponteiro
 hearing = Audição
     .mono = Reproduzir áudio estéreo como mono
 default = Padrão
@@ -151,7 +147,7 @@ magnifier = Ampliador de tela
     .show_overlay = Mostrar a sobreposição do ampliador
     .increment = Incremento de zoom
     .signin = Iniciar o ampliador ao fazer login
-    .applet = Ativar/desativar a lupa no miniaplicativo do painel
+    .applet = Ativar/desativar o ampliador no miniaplicativo do painel
     .movement = A visualização ampliada se move
     .continuous = Continuamente com ponteiro
     .onedge = Quando o ponteiro atinge a borda
@@ -165,13 +161,12 @@ color-filter = Tipo de filtro de cores
 
 ## Desktop
 
-desktop = Área de Trabalho
+desktop = Área de trabalho
 
 ## Desktop: Wallpaper
 
 wallpaper = Plano de fundo
     .change = Mudar imagem a cada
-    .desc = Imagens de plano de fundo, cores e opções de apresentação de slides
     .fit = Ajuste do plano de fundo
     .folder-dialog = Escolher pasta do plano de fundo
     .image-dialog = Escolher imagem do plano de fundo
@@ -202,7 +197,6 @@ never = Nunca
 ## Desktop: Appearance
 
 appearance = Aparência
-    .desc = Cores de destaque e temas
 accent-color = Cor de destaque
 app-background = Fundo de janela
 auto = Automático
@@ -210,11 +204,11 @@ close = Fechar
 color-picker = Seletor de cores
 copied-to-clipboard = Copiado para a área de transferência
 copy-to-clipboard = Copiar para a área de transferência
-dark = Escuro
+dark = Estilo escuro
 export = Exportar
 hex = Hex
 import = Importar
-light = Claro
+light = Estilo claro
 mode-and-colors = Modo e cores
 recent-colors = Cores recentes
 reset-to-default = Restaurar padrão
@@ -227,13 +221,13 @@ auto-switch = Alternar automaticamente entre os modos claro e escuro
     .next-sunrise = Altera para o modo claro no próximo nascer do sol
     .next-sunset = Altera para o modo escuro no próximo pôr do sol
 container-background = Fundo do contêiner
-    .desc-detail = A cor de fundo do contêiner é usada para a barra lateral de navegação, a gaveta lateral, as caixas de diálogos e widgets similares. Por padrão, a cor de fundo do contêiner é automaticamente derivada do fundo da janela.
+    .desc-detail = A cor de fundo do contêiner é usada para a barra lateral de navegação, a gaveta lateral, as caixas de diálogo e widgets similares. Por padrão, a cor de fundo do contêiner é automaticamente derivada do fundo da janela.
     .reset = Restaurar para automático
-    .desc = Usada para a barra lateral de navegação, a gaveta lateral, as caixas de diálogos e widgets similares
+    .desc = Usada para a barra lateral de navegação, a gaveta lateral, as caixas de diálogo e widgets similares
 control-tint = Tonalidade dos componentes de controle
     .desc = Usado para os fundos dos botões padrão, entradas de busca, entradas de texto e componentes similares
 frosted = Efeito de vidro fosco na interface do sistema
-    .desc = Ativa desfoque de fundo ao painel, à dock, aos miniaplicativos, ao lançador e à biblioteca de aplicativos
+    .desc = Aplica um desfoque de fundo ao painel, à dock, aos miniaplicativos, ao lançador e à biblioteca de aplicativos
 enable-export = Aplicar o tema atual para aplicativos GNOME
     .desc = Nem todos os toolkits suportam trocar automaticamente. Aplicativos que não são de COSMIC podem precisar ser reiniciados após uma mudança de tema.
 icon-theme = Tema de ícones
@@ -244,6 +238,19 @@ style = Estilo
     .round = Arredondado
     .slightly-round = Levemente arredondado
     .square = Quadrado
+    .frosted-glass = Vidro fosco
+    .frosted-system-interface = Interface do sistema
+    .frosted-system-interface-desc = Aplica efeito de vidro fosco ao lançador, à biblioteca de aplicativos, à visão geral dos espaços de trabalho e aos controles na tela
+    .frosted-windows = Janelas
+    .frosted-windows-desc = Aplica efeito de vidro fosco a janelas e caixas de diálogo
+    .frosted-panels = Painéis
+    .frosted-panels-desc = Aplica efeito de vidro fosco ao painel e à dock
+    .frosted-applets = Miniaplicativos
+    .frosted-applets-desc = Aplica efeito de vidro fosco aos menus dos miniaplicativos no painel e na dock
+    .frosted-thickness = Espessura do efeito fosco
+    .less = menor
+    .more = maior
+    .glass-opacity = Opacidade do vidro
 interface-density = Densidade da interface
     .comfortable = Confortável
     .compact = Compacta
@@ -262,12 +269,10 @@ monospace-font = Fonte monoespaçada
 ## Desktop: Notifications
 
 notifications = Notificações
-    .desc = Não Perturbe, notificações da tela de bloqueio e configurações por aplicação
 
 ## Desktop: Panel
 
 panel = Painel
-    .desc = Barra principal do sistema para menus e miniaplicativos
 add = Adicionar
 add-applet = Adicionar miniaplicativo
 all = Todos
@@ -310,17 +315,15 @@ panel-missing = Configuração do painel está ausente
 ## Desktop: Dock
 
 dock = Dock
-    .desc = Uma barra opcional com aplicativos e miniaplicativos
 
 ## Desktop: Window management
 
 window-management = Gerenciamento de janelas
-    .desc = Ação da tecla Super, opções de controle de janelas e opções adicionais de janelas lado a lado
 super-key = Ação da tecla Super (Windows)
     .launcher = Abrir o lançador
-    .workspaces = Abrir a visão geral das áreas de trabalho
+    .workspaces = Abrir a visão geral dos espaços de trabalho
     .applications = Abrir o menu de aplicativos
-    .disable = Desabilitar
+    .none = Nenhuma
 edge-gravity = Janelas flutuantes gravitam em direção às bordas próximas
 window-controls = Controles de janela
     .maximize = Mostrar botão de maximizar
@@ -333,24 +336,23 @@ focus-navigation = Navegação de foco
 
 ## Desktop: Workspaces
 
-workspaces = Áreas de trabalho
-    .desc = Orientação e comportamento das áreas de trabalho
-workspaces-behavior = Comportamento das áreas de trabalho
-    .dynamic = Áreas de trabalho dinâmicas
-    .dynamic-desc = Remove automaticamente áreas de trabalho vazias.
-    .fixed = Número fixo de áreas de trabalho
-    .fixed-desc = Adicione ou remova áreas de trabalho na visão geral.
+workspaces = Espaços de trabalho
+workspaces-behavior = Comportamento dos espaços de trabalho
+    .dynamic = Espaços de trabalho dinâmicos
+    .dynamic-desc = Remove automaticamente espaços de trabalho vazios.
+    .fixed = Número fixo de espaços de trabalho
+    .fixed-desc = Adiciona ou remove espaços de trabalho na visão geral.
 workspaces-multi-behavior = Comportamento de vários monitores
-    .span = Áreas de trabalho se expandem a todas as telas
-    .separate = Telas têm áreas de trabalho separadas
-workspaces-overview-thumbnails = Miniaturas da visão geral das áreas de trabalho
-    .show-number = Mostrar o número da área de trabalho
-    .show-name = Mostrar o nome da área de trabalho
-workspaces-orientation = Orientação das áreas de trabalho
+    .span = Espaços de trabalho se expandem a todas as telas
+    .separate = Telas têm espaços de trabalho separados
+workspaces-overview-thumbnails = Miniaturas da visão geral dos espaços de trabalho
+    .show-number = Mostrar o número do espaço de trabalho
+    .show-name = Mostrar o nome do espaço de trabalho
+workspaces-orientation = Orientação dos espaços de trabalho
     .vertical = Vertical
     .horizontal = Horizontal
-hot-corner = Hot Corner
-    .top-left-corner = Habilitar o canto superior esquerdo para exibir as áreas de trabalho
+hot-corner = Canto ativo
+    .top-left-corner = Habilitar o canto superior esquerdo para exibir os espaços de trabalho
 
 ## Displays
 
@@ -361,7 +363,6 @@ color = Cor
     .sidebar = Perfis de cor
     .temperature = Temperatura de cor
 display = Telas
-    .desc = Gerenciar telas e luz noturna
     .arrangement = Organização de telas
     .arrangement-desc = Arraste as telas para rearranjá-las
     .enable = Ativar tela
@@ -415,7 +416,6 @@ pop-flow-show-desktop = Mostrar área de trabalho
 ## Sound
 
 sound = Som
-    .desc = N/D
 sound-output = Saída
     .volume = Volume de saída
     .device = Dispositivo de saída
@@ -433,13 +433,13 @@ amplification = Amplificação
 sound-alerts = Alertas
     .volume = Volume dos alertas
     .sound = Som dos alertas
-sound-applications = Aplicações
-    .desc = Volume e configurações das aplicações
+sound-applications = Aplicativos
+    .desc = Volumes e configurações de aplicativo
+    .none = Nenhum aplicativo está usando som
 
 ## Power
 
 power = Energia e Bateria
-    .desc = Gerenciar as configurações de energia
 battery = Bateria
     .minute =
         { $value } { $value ->
@@ -467,7 +467,7 @@ connected-devices = Dispositivos conectados
     .unknown = Dispositivo desconhecido
 power-mode = Modo de energia
     .battery = Economia de energia
-    .battery-desc = Baixo consumo de energia e desempenho silencioso
+    .battery-desc = Baixo consumo de energia e desempenho limitado
     .balanced = Balanceado
     .balanced-desc = Desempenho padrão e consumo de energia moderado
     .performance = Alto desempenho
@@ -484,7 +484,6 @@ power-saving = Opções de economia de energia
 acceleration-desc = Ajustar automaticamente a sensibilidade com base na velocidade
 disable-while-typing = Desabilitar enquanto digita
 input-devices = Dispositivos de entrada
-    .desc = Dispositivos de entrada
 primary-button = Botão Primário
     .desc = Define a ordem dos botões físicos.
     .left = Esquerda
@@ -503,8 +502,7 @@ fast = Rápido
 short = Curto
 long = Longo
 keyboard = Teclado
-    .desc = Layout, entrada de caracteres especiais, atalhos
-keyboard-sources = Fontes de Entrada
+keyboard-sources = Fontes de entrada
     .desc = As fontes de entrada podem ser alternadas usando a combinação de teclas Super+Espaço. Isso pode ser personalizado nas configurações de atalho de teclado.
     .move-up = Mover para cima
     .move-down = Mover para baixo
@@ -512,11 +510,27 @@ keyboard-sources = Fontes de Entrada
     .view-layout = Ver layout do teclado
     .remove = Remover
     .add = Adicionar fonte de entrada
-keyboard-special-char = Entrada de Caracteres Especiais
+keyboard-special-char = Entrada de caracteres especiais
     .alternate = Tecla de caracteres especiais
     .compose = Tecla de composição
-    .compose-desc = A tecla de composição permite a inserção de uma grande variedade de caracteres. Para usá-la, pressione a composição seguida pela sequência de caracteres. Por exemplo, a tecla de composição seguida de "C" e "o" irá inserir "©", enquanto a tecla de composição seguida de "a" e "‘" irá inserir um "á".
+    .compose-desc = A tecla de composição permite a inserção de uma grande variedade de caracteres. Para usá-la, pressione a tecla de composição seguida pela sequência de caracteres. Por exemplo, a tecla de composição seguida de "C" e "o" irá inserir "©", enquanto a tecla de composição seguida de "a" e ‘ irá inserir "á".
     .caps = Tecla Caps Lock
+    .ctrl = Ctrl
+    .ctrl-right = Ctrl direita
+    .swap-with-ctrl = Trocar com Ctrl
+    .alt = Alt
+    .alt-left = Alt esquerda
+    .alt-right = Alt direita
+    .super = Super
+    .super-left = Super esquerda
+    .super-right = Super direita
+    .menu = Tecla menu
+    .backspace = Backspace
+    .escape = Esc
+    .swap-with-escape = Trocar com Esc
+    .print-screen = Print Screen
+    .scroll-lock = Scroll Lock
+    .none = Nenhuma
 keyboard-typing-assist = Digitação
     .repeat-rate = Taxa de repetição
     .repeat-delay = Taxa de atraso
@@ -540,10 +554,10 @@ custom = Personalizado
 debug = Debug
 disabled = Desativado
 input-source-switch = Alterar fonte de entrada de idioma do teclado
-migrate-workspace-prev = Migrar a área de trabalho para a saída anterior
-migrate-workspace-next = Migrar a área de trabalho para a próxima saída
+migrate-workspace-prev = Migrar o espaço de trabalho para a saída anterior
+migrate-workspace-next = Migrar o espaço de trabalho para a próxima saída
 migrate-workspace =
-    Migrar a área de trabalho para a saída { $direction ->
+    Migrar o espaço de trabalho para a saída { $direction ->
        *[down] abaixo
         [left] à esquerda
         [right] à direita
@@ -564,9 +578,9 @@ modified = { $count } modificado(s)
 nav-shortcuts = Navegação
     .prev-output = Focar a saída anterior
     .next-output = Focar a próxima saída
-    .last-workspace = Focar a última área de trabalho
-    .prev-workspace = Focar a área de trabalho anterior
-    .next-workspace = Focar a próxima área de trabalho
+    .last-workspace = Focar o último espaço de trabalho
+    .prev-workspace = Focar o espaço de trabalho anterior
+    .next-workspace = Focar o próximo espaço de trabalho
     .focus =
         Focar a janela  { $direction ->
            *[down] abaixo
@@ -583,7 +597,7 @@ nav-shortcuts = Navegação
             [right] à direita
             [up] acima
         }
-    .workspace = Alternar para a área de trabalho { $num }
+    .workspace = Alternar para o espaço de trabalho { $num }
 manage-windows = Gerenciamento de Janelas
     .close = Fechar janela
     .maximize = Maximizar janela
@@ -592,7 +606,7 @@ manage-windows = Gerenciamento de Janelas
     .resize-inwards = Redimensionar janela para dentro
     .resize-outwards = Redimensionar janela para fora
     .toggle-sticky = Ativar/Desativar janelas fixadas
-move-windows = Mover Janelas
+move-windows = Mover janelas
     .direction =
         Mover janela { $direction ->
            *[down] para baixo
@@ -601,27 +615,27 @@ move-windows = Mover Janelas
             [up] para cima
         }
     .display =
-        Mover a janela um monitor { $direction ->
+        Mover janela um monitor { $direction ->
            *[down] abaixo
             [left] à esquerda
             [right] à direita
             [up] acima
         }
     .workspace =
-        Mover a janela uma área de trabalho { $direction ->
+        Mover janela um espaço de trabalho { $direction ->
            *[below] abaixo
             [left] à esquerda
             [right] à direita
             [above] acima
         }
-    .workspace-num = Mover a janela para a área de trabalho { $num }
-    .prev-workspace = Mover a janela para a área de trabalho anterior
-    .next-workspace = Mover a janela para a próxima área de trabalho
-    .last-workspace = Mover a janela para a última área de trabalho
-    .next-display = Mover a janela para a próxima tela
-    .prev-display = Mover a janela para a tela anterior
-    .send-to-prev-workspace = Mover a janela para a área de trabalho anterior
-    .send-to-next-workspace = Mover a janela para a próxima área de trabalho
+    .workspace-num = Mover janela para o espaço de trabalho { $num }
+    .prev-workspace = Mover janela para o espaço de trabalho anterior
+    .next-workspace = Mover janela para o próximo espaço de trabalho
+    .last-workspace = Mover janela para o último espaço de trabalho
+    .next-display = Mover janela para a próxima tela
+    .prev-display = Mover janela para a tela anterior
+    .send-to-prev-workspace = Mover janela para o espaço de trabalho anterior
+    .send-to-next-workspace = Mover janela para o próximo espaço de trabalho
 system-shortcut = Sistema
     .app-library = Abrir a biblioteca de aplicativos
     .brightness-down = Reduzir o brilho da tela
@@ -648,7 +662,7 @@ system-shortcut = Sistema
     .web-browser = Abrir um navegador web
     .window-switcher = Alternar entre as janelas abertas
     .window-switcher-previous = Alternar entre as janelas abertas na ordem inversa
-    .workspace-overview = Abrir a visão geral das áreas de trabalho
+    .workspace-overview = Abrir a visão geral dos espaços de trabalho
 window-tiling = Janelas lado a lado
     .horizontal = Definir orientação horizontal
     .vertical = Definir orientação vertical
@@ -665,7 +679,6 @@ zoom-out = Diminuir o zoom
 ## Input: Mouse
 
 mouse = Mouse
-    .desc = Velocidade do mouse, aceleração e rolagem natural.
     .speed = Velocidade do mouse
     .acceleration = Ativar aceleração do mouse
 
@@ -680,7 +693,6 @@ tap-to-click = Toque para clicar
     .desc = Habilita o toque de um dedo para clique primário, toque de dois dedos para clique secundário e toque de três dedos para o clique do meio
 touchpad = Touchpad
     .acceleration = Habilitar aceleração do touchpad
-    .desc = Velocidade do touchpad, opções de clique e gestos.
     .speed = Velocidade do touchpad
 
 ## Input: Gestures
@@ -691,46 +703,43 @@ gestures = Gestos
     .four-finger-right = Deslizar quatro dedos para a direita
     .four-finger-up = Deslizar quatro dedos para cima
     .three-finger-any = Deslizar três dedos para qualquer direção
-switch-workspaces = Alternar entre áreas de trabalho
+switch-workspaces = Alternar entre espaços de trabalho
     .horizontal = Deslizar quatro dedos para a direita ou esquerda
     .vertical = Deslizar quatro dedos para cima ou para baixo
 switch-between-windows = Alternar entre janelas
 open-application-library = Abrir o menu de aplicativos
-open-workspaces-view = Abrir a visão geral das áreas de trabalho
+open-workspaces-view = Abrir a visão geral dos espaços de trabalho
 
 ## Time & Language
 
 time = Hora e Idioma
-    .desc = N/D
-time-date = Data e Hora
-    .desc = Fuso horário, definições automáticas de relógio e algumas formatações de hora.
+time-date = Data e hora
     .auto = Definir automaticamente
     .auto-ntp = A data e a hora serão atualizadas automaticamente quando o fuso horário for definido
-time-zone = Fuso Horário
+time-zone = Fuso horário
     .auto = Fuso horário automático
     .auto-info = Requer um serviço de localização e acesso à Internet
-time-format = Formato de Data e Hora
+time-format = Formato de data e hora
     .twenty-four = Formato de 24 horas
     .show-seconds = Mostrar segundos
     .first = Primeiro dia da semana
-    .show-date = Mostrar a data no painel
+    .show-date = Mostrar a data no miniaplicativo de hora
     .friday = Sexta-feira
     .saturday = Sábado
     .sunday = Domingo
     .monday = Segunda-feira
-time-region = Região e Idioma
-    .desc = Formatar datas, horas e números com base na sua região
+time-region = Região e idioma
 formatting = Formatação
     .dates = Datas
     .time = Horas
-    .date-and-time = Data e Hora
+    .date-and-time = Data e hora
     .numbers = Números
     .measurement = Medidas
     .paper = Papel
-preferred-languages = Idiomas Preferidos
-    .desc = A ordem dos idiomas determina qual idioma será usado para a tradução do desktop. As alterações entram em vigor no próximo login.
+preferred-languages = Idiomas preferidos
+    .desc = A ordem dos idiomas determina qual idioma será usado para a tradução do desktop. As alterações entram em vigor no próximo início de sessão.
 add-language = Adicionar idioma
-    .context = Adicionar Idioma
+    .context = Adicionar idioma
 install-additional-languages = Instalar idiomas adicionais
 region = Região
 
@@ -741,7 +750,6 @@ applications = Aplicativos
 ## Applications: Default Applications
 
 default-apps = Aplicativos Padrão
-    .desc = Estabelecer os aplicativos padrões para o navegador web, o cliente de correio eletrônico, o gestor de arquivos e outros aplicativos
     .web-browser = Navegador web
     .file-manager = Gerenciador de arquivos
     .mail-client = Cliente de e-mail
@@ -756,10 +764,9 @@ default-apps = Aplicativos Padrão
 
 ## Applications: Startup Applications
 
-startup-apps = Aplicativos de Inicialização
-    .desc = Configurar aplicativos que são iniciados automaticamente ao fazer login no sistema.
+startup-apps = Aplicativos de inicialização
     .add = Adicionar aplicativo
-    .user = Aplicativos que serão iniciados ao fazer login no sistema
+    .user = Aplicativos que serão iniciados ao iniciar sessão
     .none = Não há aplicativos de inicialização adicionados
     .remove-dialog-title = Remover { $name }?
     .remove-dialog-description = Remover esse aplicativo de inicialização?
@@ -767,8 +774,7 @@ startup-apps = Aplicativos de Inicialização
 
 ## Applications: Legacy Applications
 
-legacy-applications = Compatibilidade com Aplicativos X11
-    .desc = Dimensionamento de aplicativos de sistema de janelas X11 e atalhos globais
+legacy-applications = Compatibilidade com aplicativos X11
 legacy-app-global-shortcuts = Atalhos globais em aplicativos X11
     .desc = Atalhos globais permitem que pressionamentos de teclas e eventos de botão do mouse realizados em aplicativos sejam reconhecidos por outros aplicativos para recursos como push-to-talk ou push-to-mute. Por padrão, isso é desabilitado em aplicativos X11 para garantir que outros aplicativos não possam monitorar eventos de teclado e mouse contendo informações confidenciais.
     .none = Nenhuma tecla
@@ -793,7 +799,6 @@ system = Sistema e Contas
 ## System: About
 
 about = Sobre
-    .desc = Nome do dispositivo, informações de hardware, configurações padrão do sistema
 about-device = Nome do dispositivo
     .desc = Aparece para outros dispositivos de rede ou Bluetooth
 about-hardware = Hardware
@@ -814,12 +819,10 @@ about-related = Configurações relacionadas
 ## System: Firmware
 
 firmware = Firmware
-    .desc = Detalhes do firmware
 
 ## System: Users
 
 users = Usuários
-    .desc = Autenticação e contas de usuário.
     .admin = Administrador
     .standard = Padrão
     .profile-add = Escolher uma imagem de perfil
@@ -833,13 +836,13 @@ invalid-username = Nome de usuário inválido
 password-mismatch = A senha e a confirmação devem ser iguais
 save = Salvar
 add-another-keybinding = Adicionar outra tecla de atalho
-qr-code-unavailable = QR code inválido
+qr-code-unavailable = Código QR não disponível
 network-name = Nome da rede
 share = Compartilhar rede
-scan-to-connect-description = Escaneie o QR code para se conectar a esta rede.
+scan-to-connect-description = Leia o código QR para se conectar a esta rede.
 place-here = Colocar miniaplicativos aqui
 sound-device-port-unplugged = Desplugado
-sound-hd-audio = Áudio HD
+sound-hd-audio = Áudio de alta definição
 sound-usb-audio = Áudio USB
 sound-device-profiles = Perfis de dispositivo
 shadows-floating = Janelas flutuantes
@@ -848,8 +851,110 @@ shadows-tiling = Janelas lado a lado
     .clip = Corresponder com os cantos do sistema
     .shadow = Aplicar sombras
 shadow-and-corners = Cantos e sombras de janelas
-workspaces-overview = Visão geral das áreas de trabalho
+workspaces-overview = Visão geral dos espaços de trabalho
     .action-on-typing = Ação ao digitar
     .none = Nenhuma
-    .launcher = Abrir Lançador
-    .applications = Abrir Aplicativos
+    .launcher = Abrir lançador
+    .applications = Abrir aplicativos
+xdg-entry-touchpad = Touchpad
+xdg-entry-wired = Rede cabeada
+xdg-entry-startup-apps-comment = Configurar aplicativos que serão executados ao iniciar sessão
+xdg-entry-region-language = Região e Idioma
+xdg-entry-mouse-keywords = COSMIC;Mouse;Aceleração;Rolagem;
+xdg-entry-bluetooth-comment = Gerenciar dispositivos Bluetooth
+xdg-entry-notifications-keywords = COSMIC;Notificação;Bloqueio;
+xdg-entry-startup-apps-keywords = COSMIC;Iniciar;Inicialização;Aplicativo;
+xdg-entry-default-apps-comment = Navegador padrão, cliente de email, navegador de arquivos e outros aplicativos
+xdg-entry-keyboard-comment = Fontes de entrada, alternância, entrada de caracteres especiais, atalhos
+xdg-entry-wired-keywords = COSMIC;Wired;Cabeada;LAN;Rede;Conexão;
+xdg-entry-power = Energia e bateria
+xdg-entry-appearance-keywords = COSMIC;Destaque;Accent;Cor;Ícone;Fonte;Tema
+xdg-entry-mouse = Mouse
+xdg-entry-dock-keywords = COSMIC;Dock;Painel;Applet;Miniaplicativo
+xdg-entry-mouse-comment = Velocidade do mouse, aceleração e rolagem natural
+xdg-entry-system = Sistema e contas
+xdg-entry-panel-keywords = COSMIC;Painel;Applet;Miniaplicativo
+xdg-entry-window-management = Gerenciamento de janelas
+xdg-entry-a11y = Acessibilidade
+xdg-entry-time-language-comment = Gerenciar data, hora, região e idioma do sistema
+xdg-entry-desktop-keywords = COSMIC;Desktop;Área;Trabalho;
+xdg-entry-x11-applications-keywords = COSMIC;X11;Aplicativo;Jogos;Compatibilidade;
+xdg-entry-displays-comment = Gerenciar configurações de tela
+xdg-entry-touchpad-keywords = COSMIC;Touchpad;Gestos;
+xdg-entry-time-language = Hora e idioma
+xdg-entry-users = Usuários
+xdg-entry-system-keywords = COSMIC;Sistema;Info;Contas;Firmware;
+xdg-entry-default-apps = Aplicativos padrão
+xdg-entry-wireless-keywords = COSMIC;WiFi;Wi-Fi;Rede;Conexão;
+xdg-entry-applications-comment = Aplicativos padrão, aplicativos de inicialização e configurações de compatibilidade com aplicativos X11
+xdg-entry-about-keywords = COSMIC;Sobre
+xdg-entry-panel = Painel
+xdg-entry-notifications = Notificações
+xdg-entry-a11y-keywords = COSMIC;Acessibilidade;A11y;Tela;Leitor;Lupa;Ampliador;Contraste;Cor;
+xdg-entry-wireless-comment = Conexões Wi-Fi e perfis de conexão
+xdg-entry-desktop = Área de trabalho
+xdg-entry-date-time-keywords = COSMIC;Hora;Fuso;
+xdg-entry-desktop-comment = Plano de fundo, aparência, painel, dock, gerenciamento de janelas e configurações de espaços de trabalho
+xdg-entry-wallpaper = Plano de fundo
+xdg-entry-keyboard = Teclado
+xdg-entry-a11y-comment = Leitor de tela, ampliador de tela, alto contraste e filtros de cor
+xdg-entry-displays = Telas
+xdg-entry-network = Rede e conexão sem fio
+xdg-entry-date-time = Data e hora
+xdg-entry-users-comment = Autenticação e contas de usuário
+xdg-entry-input-comment = Configurações de teclado e mouse
+xdg-entry-bluetooth-keywords = COSMIC;Bluetooth;
+xdg-entry-dock-comment = Uma barra opcional para aplicativos e miniaplicativos
+xdg-entry-network-keywords = COSMIC;Rede;Conexão;fio;Wireless;WiFi;VPN;
+xdg-entry-wallpaper-comment = Imagens do plano de fundo, cores e opções de transição
+xdg-entry-dock = Dock
+xdg-entry-startup-apps = Aplicativos de Inicialização
+xdg-entry-wireless = Wi-Fi
+xdg-entry-workspaces-keywords = COSMIC;Espaço;Trabalho;Orientação;Visão;Geral;Monitor;Tela;
+xdg-entry-system-comment = Informações do sistema, contas e atualizações de firmware
+xdg-entry-x11-applications-comment = Escalonamento de aplicativos com sistema de janelas X11, tela primária e atalhos globais
+xdg-entry-region-language-comment = Formatação de datas, horas e números baseados em sua região
+xdg-entry-wallpaper-keywords = COSMIC;Wallpaper;PapelParede;Background;Slideshow;Transição;Plano;Fundo;
+xdg-entry-users-keywords = COSMIC;Usuário;Conta;
+xdg-entry-about-comment = Nome do dispositivo, informações de hardware, padrões do sistema operacional
+xdg-entry-vpn-keywords = COSMIC;VPN;Rede;Conexão;OpenVPN;OpenConnect;
+xdg-entry-appearance-comment = Cores de destaque e temas
+xdg-entry-time-language-keywords = COSMIC;Sistema;Hora;Data;Região;idioma;
+xdg-entry-input-keywords = COSMIC;Entrada;Teclado;Mouse;
+xdg-entry-comment = Aplicativo de configurações para o ambiente COSMIC
+xdg-entry-notifications-comment = Modo "Não perturbe", notificações no bloqueio de tela e configurações por aplicativo
+xdg-entry-applications = Aplicativos
+xdg-entry-sound-keywords = COSMIC;Som;Áudio;Alerta;Pipewire;
+xdg-entry-power-keywords = COSMIC;Energia;Bateria
+xdg-entry-default-apps-keywords = COSMIC;Padrão;Aplicativo
+xdg-entry-keywords = COSMIC;Configurações;
+xdg-entry-region-language-keywords = COSMIC;Região;Idioma;Data;Formato;Hora;Localização;
+xdg-entry-about = Sobre
+xdg-entry-input = Dispositivos de entrada
+xdg-entry-applications-keywords = COSMIC;Padrão;Aplicativo;Inicialização;Iniciar;X11;Compatibilidade
+xdg-entry-sound-comment = Configurações de áudio para dispositivos, alertas e aplicativos
+xdg-entry-touchpad-comment = Velocidade do touchpad, opções do clique e gestos
+xdg-entry-keyboard-keywords = COSMIC;Teclado;Entrada;Dispositivos;Atalhos;
+xdg-entry-vpn-comment = Conexões VPN e perfis de conexão
+xdg-entry-appearance = Aparência
+xdg-entry-window-management-keywords = COSMIC;Janela;Gerenciamento;Tiling;Lado;Super;Tecla;
+xdg-entry-workspaces-comment = Orientação dos espaços de trabalho, visão geral e comportamento com monitores múltiplos
+xdg-entry-network-comment = Gerenciar conexões de rede
+xdg-entry-panel-comment = Barra de sistema primária para menus e miniaplicativos
+xdg-entry-sound = Som
+xdg-entry-power-comment = Modos de energia e opções de economia de energia
+xdg-entry-displays-keywords = COSMIC;Tela;Monitor;
+xdg-entry-workspaces = Espaços de trabalho
+xdg-entry-date-time-comment = Fuso horário, configurações de relógio e formatação de hora
+xdg-entry-x11-applications = Compatibilidade com aplicativos X11
+xdg-entry-window-management-comment = Ação da tecla Super, opções de controle de janela e opções de janelas lado a lado (tiling)
+xdg-entry-wired-comment = Conexões de rede com fio e perfis de conexão
+no-search-results = Nenhuma rede corresponde à sua pesquisa.
+workspaces-navigation = Navegação
+    .wraparound = Navegar entre o primeiro e o último espaço de trabalho usando atalhos de teclado e gestos
+bluetooth-display-passkey = Emparelhamento Bluetooth
+    .description = Por favor, digite a seguinte chave em { $device }, depois pressione Enter
+bluetooth-display-pin = Emparelhamento Bluetooth
+    .description = Por favor, digite o seguinte PIN em { $device }, depois pressione Enter
+rename = Renomear
+bluetooth-rename-device = Renomear dispositivo

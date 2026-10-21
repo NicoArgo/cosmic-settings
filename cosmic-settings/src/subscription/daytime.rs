@@ -2,25 +2,22 @@ use std::any::TypeId;
 
 use ashpd::desktop::location::{Location, LocationProxy};
 use chrono::NaiveDate;
-use cosmic::iced::{
-    Subscription,
-    futures::{SinkExt, StreamExt, channel::mpsc::Sender, future},
-    stream,
-};
+use cosmic::iced::futures::channel::mpsc::Sender;
+use cosmic::iced::futures::{SinkExt, StreamExt, future};
+use cosmic::iced::{Subscription, stream};
 use sunrise::{Coordinates, SolarDay, SolarEvent};
 use tokio::select;
 
 pub fn daytime() -> cosmic::iced::Subscription<bool> {
     struct Sunset;
-    Subscription::run_with_id(
-        TypeId::of::<Sunset>(),
-        stream::channel(2, |tx| async {
+    Subscription::run_with(TypeId::of::<Sunset>(), |_| {
+        stream::channel(2, |tx: Sender<bool>| async {
             if let Err(err) = inner(tx).await {
                 tracing::error!("Sunset subscription error: {:?}", err);
             }
             future::pending().await
-        }),
-    )
+        })
+    })
 }
 
 enum Event {

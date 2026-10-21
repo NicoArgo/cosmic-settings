@@ -5,7 +5,6 @@ use crate::PageCommands;
 use crate::config::Config;
 #[cfg(feature = "page-accessibility")]
 use crate::pages::accessibility;
-use crate::pages::applications;
 #[cfg(feature = "page-bluetooth")]
 use crate::pages::bluetooth;
 use crate::pages::desktop::{self, appearance};
@@ -19,26 +18,21 @@ use crate::pages::networking;
 use crate::pages::power;
 #[cfg(feature = "page-sound")]
 use crate::pages::sound;
-use crate::pages::{self, system, time};
+use crate::pages::{self, applications, system, time};
 use crate::subscription::desktop_files;
 use crate::widget::{page_title, search_header};
+use cosmic::app::context_drawer::ContextDrawer;
+use cosmic::app::{Core, Task};
 #[cfg(feature = "wayland")]
 use cosmic::cctk::{sctk::output::OutputInfo, wayland_client::protocol::wl_output::WlOutput};
-use cosmic::{
-    Element,
-    app::{Core, Task, context_drawer::ContextDrawer},
-    iced::{
-        self, Length, Subscription,
-        event::{self, PlatformSpecific},
-        keyboard, window,
-    },
-    prelude::*,
-    surface,
-    widget::{
-        button, column, container, icon, id_container, nav_bar, row, scrollable, segmented_button,
-        settings, text_input,
-    },
+use cosmic::iced::event::{self, PlatformSpecific};
+use cosmic::iced::{self, Length, Subscription, keyboard, window};
+use cosmic::prelude::*;
+use cosmic::widget::{
+    button, column, container, icon, id_container, nav_bar, row, scrollable, segmented_button,
+    settings, text_input,
 };
+use cosmic::{Element, surface};
 #[cfg(feature = "cosmic-comp-config")]
 use cosmic_comp_config::CosmicCompConfig;
 #[cfg(feature = "wayland")]
@@ -52,8 +46,9 @@ use desktop::{
 #[cfg(feature = "wayland")]
 use event::wayland;
 use page::Entity;
+use std::borrow::Cow;
 use std::collections::BTreeSet;
-use std::{borrow::Cow, str::FromStr};
+use std::str::FromStr;
 
 #[allow(clippy::struct_excessive_bools)]
 #[allow(clippy::module_name_repetitions)]
@@ -68,6 +63,7 @@ pub struct SettingsApp {
     pages: page::Binder<crate::pages::Message>,
     search_active: bool,
     search_id: cosmic::widget::Id,
+    search_scroll_id: cosmic::iced::id::Id,
     search_input: String,
     search_selections: Vec<(page::Entity, section::Entity)>,
     context_title: Option<String>,
@@ -82,6 +78,8 @@ impl SettingsApp {
             PageCommands::AccessibilityMagnifier => {
                 self.pages.page_id::<accessibility::magnifier::Page>()
             }
+            #[cfg(feature = "page-accessibility")]
+            PageCommands::AccessibilityOsk => self.pages.page_id::<accessibility::osk::Page>(),
             #[cfg(feature = "page-about")]
             PageCommands::About => self.pages.page_id::<system::about::Page>(),
             PageCommands::Appearance { command: _ } => {
@@ -148,9 +146,9 @@ impl SettingsApp {
         }
     }
 
-    fn id(&self) -> cosmic::iced_core::id::Id {
+    fn id(&self) -> cosmic::iced::id::Id {
         let cur_page_name = self.pages.info[self.active_page].id.as_ref();
-        cosmic::iced_core::id::Id::new(cur_page_name.to_owned())
+        cosmic::iced::id::Id::new(cur_page_name.to_owned())
     }
 }
 
@@ -178,7 +176,7 @@ pub enum Message {
     SearchSubmit,
     SetTheme(cosmic::theme::Theme),
     SetWindowTitle,
-    Surface(surface::Action),
+    Surface(surface::Action<Message>),
 }
 
 impl cosmic::Application for SettingsApp {
@@ -210,6 +208,7 @@ impl cosmic::Application for SettingsApp {
             pages: page::Binder::default(),
             search_active: false,
             search_id: cosmic::widget::Id::unique(),
+            search_scroll_id: cosmic::iced::id::Id::new("COSMIC_search_results_scrollable"),
             search_input: String::new(),
             search_selections: Vec::default(),
             context_title: None,
@@ -422,6 +421,12 @@ impl cosmic::Application for SettingsApp {
                         return page.update(self.active_page, message).map(Into::into);
                     }
                 }
+                #[cfg(feature = "page-accessibility")]
+                crate::pages::Message::AccessibilityOsk(message) => {
+                    if let Some(page) = self.pages.page_mut::<accessibility::osk::Page>() {
+                        return page.update(self.active_page, message).map(Into::into);
+                    }
+                }
                 #[cfg(feature = "page-input")]
                 crate::pages::Message::AccessibilityShortcuts(message) => {
                     if let Some(page) = self
@@ -579,6 +584,13 @@ impl cosmic::Application for SettingsApp {
                 #[cfg(feature = "page-sound")]
                 crate::pages::Message::Sound(message) => {
                     if let Some(page) = self.pages.page_mut::<sound::Page>() {
+                        return page.update(message).map(Into::into);
+                    }
+                }
+
+                #[cfg(feature = "page-sound")]
+                crate::pages::Message::SoundApplications(message) => {
+                    if let Some(page) = self.pages.page_mut::<sound::applications::Page>() {
                         return page.update(message).map(Into::into);
                     }
                 }
@@ -856,9 +868,7 @@ impl cosmic::Application for SettingsApp {
                 tracing::error!(error, "error occurred");
             }
             Message::Surface(a) => {
-                return cosmic::task::message(cosmic::Action::Cosmic(
-                    cosmic::app::Action::Surface(a),
-                ));
+                return cosmic::task::message(cosmic::Action::Surface(a));
             }
         }
 
@@ -888,7 +898,7 @@ impl cosmic::Application for SettingsApp {
         } else if let Some(sub_pages) = self.pages.sub_pages(self.active_page) {
             self.sub_page_view(sub_pages)
         } else {
-            return self.page_container(row::row());
+            return self.page_container(cosmic::widget::space());
         };
 
         container(view).into()
@@ -1057,7 +1067,7 @@ impl SettingsApp {
                 Message::Page(parent),
             );
 
-            let mut page_header_content: cosmic::iced_widget::Row<'_, Message, Theme> =
+            let mut page_header_content: cosmic::iced::widget::Row<'_, Message, Theme> =
                 row::with_capacity(2)
                     .align_y(iced::Alignment::End)
                     .push(page_header);
@@ -1150,6 +1160,9 @@ impl SettingsApp {
                 }
 
                 for page in unload {
+                    if page == self.active_page {
+                        continue;
+                    }
                     self.loaded_pages.remove(&page);
                     self.pages.on_leave(page);
                 }
@@ -1203,6 +1216,7 @@ impl SettingsApp {
 
         self.page_container(settings::view_column(sections))
             .apply(scrollable)
+            .apply(|w| id_container(w, self.search_scroll_id.clone()))
             .into()
     }
 

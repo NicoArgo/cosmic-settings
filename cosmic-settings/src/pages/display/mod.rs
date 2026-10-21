@@ -8,10 +8,11 @@ pub mod show_desktop;
 
 use crate::{app, pages};
 use arrangement::Arrangement;
-use cosmic::iced::{Alignment, Length, time};
-use cosmic::iced_widget::scrollable::RelativeOffset;
+use cosmic::iced::core::text::{Ellipsize, EllipsizeHeightLimit};
+use cosmic::iced::widget::scrollable::RelativeOffset;
+use cosmic::iced::{Alignment, Length, stream, time};
 use cosmic::widget::{
-    self, column, container, dropdown, list_column, segmented_button, tab_bar, text, toggler,
+    self, column, container, dropdown, list_column, segmented_button, tab_bar, text,
 };
 use cosmic::{Apply, Element, Task, surface};
 use cosmic_randr_shell::{
@@ -20,11 +21,11 @@ use cosmic_randr_shell::{
 use cosmic_settings_page::{self as page, Section, section};
 use futures::SinkExt;
 use indexmap::Equivalent;
-use slab::Slab;
 use slotmap::{Key, SecondaryMap, SlotMap};
+use std::collections::BTreeMap;
+use std::process::ExitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock};
-use std::{collections::BTreeMap, process::ExitStatus};
 use tokio::sync::oneshot;
 
 static DPI_SCALES: &[u32] = &[50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300];
@@ -109,7 +110,7 @@ pub enum Message {
         /// Available outputs from cosmic-randr.
         randr: Arc<Result<List, cosmic_randr_shell::Error>>,
     },
-    Surface(surface::Action),
+    Surface(surface::Action<crate::app::Message>),
     /// POP Flow: the "only the screen where it was triggered" switch was flipped.
     ShowDesktopPerOutput(bool),
     /// POP Flow: `com.popflow.ShowDesktop` changed on disk (e.g. from the
@@ -246,7 +247,7 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> page::Info {
         page::Info::new("display", "preferences-desktop-display-symbolic")
             .title(fl!("display"))
-            .description(fl!("display", "desc"))
+            .description(fl!("xdg-entry-displays-comment"))
     }
 
     #[cfg(not(feature = "test"))]
@@ -303,9 +304,9 @@ impl page::Page<crate::pages::Message> for Page {
             });
 
             // Forward messages from another thread to prevent the monitoring thread from blocking.
-            let (randr_task, randr_handle) = Task::stream(cosmic::iced_futures::stream::channel(
+            let (randr_task, randr_handle) = Task::stream(stream::channel(
                 1,
-                |mut emitter| async move {
+                |mut emitter: futures::channel::mpsc::Sender<_>| async move {
                     while let Some(message) = rx.recv().await {
                         if let cosmic_randr::Message::ManagerDone = message
                             && !refreshing_page.swap(true, Ordering::SeqCst)
@@ -375,9 +376,9 @@ impl page::Page<crate::pages::Message> for Page {
         });
 
         // Forward messages from the DRM hotplug thread.
-        let (hotplug_task, hotplug_handle) = Task::stream(cosmic::iced_futures::stream::channel(
+        let (hotplug_task, hotplug_handle) = Task::stream(stream::channel(
             1,
-            |mut emitter| async move {
+            |mut emitter: futures::channel::mpsc::Sender<pages::Message>| async move {
                 while let Some(message) = rx.recv().await {
                     _ = emitter.send(message).await;
                 }
@@ -636,8 +637,8 @@ impl Page {
                 return cosmic::iced::widget::scrollable::snap_to(
                     self.display_arrangement_scrollable.clone(),
                     RelativeOffset {
-                        x: self.last_pan,
-                        y: 0.0,
+                        x: Some(self.last_pan),
+                        y: None,
                     },
                 );
             }
@@ -700,7 +701,10 @@ impl Page {
         self.last_pan = 0.5;
         cosmic::iced::widget::scrollable::snap_to(
             self.display_arrangement_scrollable.clone(),
-            RelativeOffset { x: 0.5, y: 0.5 },
+            RelativeOffset {
+                x: Some(0.5),
+                y: Some(0.5),
+            },
         )
     }
 
@@ -954,8 +958,8 @@ impl Page {
             Some(orientation) => self.set_dialog(
                 Randr::Transform(match orientation {
                     1 => Transform::Rotate90,
-                    2 => Transform::Flipped180,
-                    3 => Transform::Flipped270,
+                    2 => Transform::Rotate180,
+                    3 => Transform::Rotate270,
                     _ => Transform::Normal,
                 }),
                 &request,
@@ -1144,6 +1148,12 @@ impl Page {
                     .arg(itoa::Buffer::new().format(x))
                     .arg("--pos-y")
                     .arg(itoa::Buffer::new().format(y))
+                    .arg("--refresh")
+                    .arg(format!(
+                        "{}.{:03}",
+                        current.refresh_rate / 1000,
+                        current.refresh_rate % 1000
+                    ))
                     .arg(name)
                     .arg(itoa::Buffer::new().format(current.size.0))
                     .arg(itoa::Buffer::new().format(current.size.1));
@@ -1228,10 +1238,10 @@ impl Page {
 
 /// View for the display arrangement section.
 pub fn display_arrangement() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    _ = descriptions.insert(fl!("display", "arrangement"));
-    let display_arrangement_desc = descriptions.insert(fl!("display", "arrangement-desc"));
+    crate::slab!(descriptions {
+        _display_arrangement = fl!("display", "arrangement");
+        display_arrangement_desc = fl!("display", "arrangement-desc");
+    });
 
     Section::default()
         .title(fl!("display", "arrangement"))
@@ -1244,7 +1254,7 @@ pub fn display_arrangement() -> Section<crate::pages::Message> {
                 space_xxs, space_m, ..
             } = cosmic::theme::spacing();
 
-            column()
+            column::with_capacity(2)
                 .push(
                     text::body(&descriptions[display_arrangement_desc])
                         .apply(container)
@@ -1272,18 +1282,18 @@ pub fn display_arrangement() -> Section<crate::pages::Message> {
 
 /// View for the display configuration section.
 pub fn display_configuration() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let _display = descriptions.insert(fl!("display"));
-    let refresh_rate = descriptions.insert(fl!("display", "refresh-rate"));
-    let vrr = descriptions.insert(fl!("vrr"));
-    let resolution = descriptions.insert(fl!("display", "resolution"));
-    let scale = descriptions.insert(fl!("display", "scale"));
-    let additional_scale_options = descriptions.insert(fl!("display", "additional-scale-options"));
-    let orientation = descriptions.insert(fl!("orientation"));
-    let enable_label = descriptions.insert(fl!("display", "enable"));
-    let options_label = descriptions.insert(fl!("display", "options"));
-    let mirroring_label = descriptions.insert(fl!("mirroring"));
+    crate::slab!(descriptions {
+        _display = fl!("display");
+        refresh_rate = fl!("display", "refresh-rate");
+        vrr = fl!("vrr");
+        resolution = fl!("display", "resolution");
+        scale = fl!("display", "scale");
+        additional_scale_options = fl!("display", "additional-scale-options");
+        orientation = fl!("orientation");
+        enable_label = fl!("display", "enable");
+        options_label = fl!("display", "options");
+        mirroring_label = fl!("mirroring");
+    });
 
     Section::default()
         .descriptions(descriptions)
@@ -1291,7 +1301,7 @@ pub fn display_configuration() -> Section<crate::pages::Message> {
             let descriptions = &section.descriptions;
 
             let Some(&active_id) = page.display_tabs.active_data::<OutputKey>() else {
-                return column().into();
+                return widget::space().into();
             };
 
             let active_output = &page.list.outputs[active_id];
@@ -1393,11 +1403,12 @@ pub fn display_configuration() -> Section<crate::pages::Message> {
                 items
             });
 
-            let mut content = column().spacing(cosmic::theme::spacing().space_xs);
+            let mut content = column::with_capacity(2).spacing(cosmic::theme::spacing().space_xs);
 
             if page.list.outputs.len() > 1 {
                 let display_switcher = tab_bar::horizontal(&page.display_tabs)
                     .button_alignment(Alignment::Center)
+                    .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
                     .on_activate(Message::Display);
 
                 let mut display_enable = if page
@@ -1411,10 +1422,10 @@ pub fn display_configuration() -> Section<crate::pages::Message> {
                     || !active_output.enabled
                 {
                     list_column()
-                        .add(widget::settings::item(
-                            &descriptions[enable_label],
-                            toggler(active_output.enabled).on_toggle(Message::DisplayToggle),
-                        ))
+                        .add(
+                            widget::settings::item::builder(&descriptions[enable_label])
+                                .toggler(active_output.enabled, Message::DisplayToggle),
+                        )
                         .add(widget::settings::item(
                             &descriptions[mirroring_label],
                             widget::dropdown::multi::dropdown(

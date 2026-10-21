@@ -1,3 +1,21 @@
+cosmic-settings (1.9.0) noble; urgency=medium
+
+  * Epoch 1.9.0 version update
+
+ -- Michael Murphy <michael@mmurphy.dev>  Mon, 14 Sep 2026 21:58:05 +0200
+
+cosmic-settings (1.7.0) noble; urgency=medium
+
+  * Epoch 1.7.0 version update
+
+ -- Michael Murphy <michael@mmurphy.dev>  Fri, 21 Aug 2026 20:44:57 +0200
+
+cosmic-settings (1.0.12) noble; urgency=medium
+
+  * release: 1.0.12
+
+ -- Michael Murphy <mmstick@pop-os>  Mon, 27 Apr 2026 15:24:27 +0200
+
 cosmic-settings (1.0.7) noble; urgency=medium
 
   * release: 1.0.7

@@ -1,20 +1,18 @@
 // Copyright 2024 System76 <info@system76.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
-use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-use cosmic::{
-    Apply, Element, Task,
-    config::{CosmicTk, FontConfig},
-    iced_core::text::Wrapping,
-    widget::{self, settings, svg},
-};
+use cosmic::config::{CosmicTk, FontConfig};
+use cosmic::{Apply, Element, Task, widget};
 use cosmic_config::ConfigSet;
 
 use crate::app;
+use crate::widget::selection_context_item;
 
 use super::{ContextView, Message, drawer};
+
+pub static FONT_SEARCH: LazyLock<widget::Id> = LazyLock::new(|| widget::Id::new("FONT_SEARCH"));
 
 const INTERFACE_FONT: &str = "interface_font";
 const MONOSPACE_FONT: &str = "monospace_font";
@@ -95,6 +93,11 @@ impl Model {
         self.font_filter.clear();
     }
 
+    pub fn take_families_from(&mut self, other: &mut Model) {
+        self.interface_font_families = std::mem::take(&mut other.interface_font_families);
+        self.monospace_font_families = std::mem::take(&mut other.monospace_font_families);
+    }
+
     pub fn font_loaded(
         &mut self,
         mono: Vec<Arc<str>>,
@@ -168,6 +171,7 @@ impl Model {
             .on_clear(Message::DrawerFont(drawer::FontMessage::Search(
                 String::new(),
             )))
+            .id(FONT_SEARCH.clone())
             .apply(Element::from)
             .map(crate::pages::Message::Appearance)
     }
@@ -177,10 +181,6 @@ impl Model {
         context_view: &ContextView,
         callback: impl Fn(Arc<str>) -> super::Message,
     ) -> Element<'_, super::Message> {
-        let svg_accent = Rc::new(|theme: &cosmic::Theme| svg::Style {
-            color: Some(theme.cosmic().accent_text_color().into()),
-        });
-
         let (mut families, current_font) = match *context_view {
             ContextView::MonospaceFont => {
                 (&self.monospace_font_families, &self.monospace_font.family)
@@ -193,36 +193,17 @@ impl Model {
             families = &self.font_filter;
         }
 
-        let list = families.iter().fold(widget::list_column(), |list, family| {
-            let selected = &**family == current_font;
-            list.add(
-                settings::item_row(vec![
-                    widget::text::body(&**family)
-                        .class(if selected {
-                            cosmic::theme::Text::Accent
-                        } else {
-                            cosmic::theme::Text::Default
-                        })
-                        .wrapping(Wrapping::Word)
-                        .width(cosmic::iced::Length::Fill)
-                        .into(),
-                    if selected {
-                        widget::icon::from_name("object-select-symbolic")
-                            .size(16)
-                            .icon()
-                            .class(cosmic::theme::Svg::Custom(svg_accent.clone()))
-                            .into()
-                    } else {
-                        widget::horizontal_space().width(16).into()
-                    },
-                ])
-                .apply(widget::container)
-                .class(cosmic::theme::Container::List)
-                .apply(widget::button::custom)
-                .class(cosmic::theme::Button::Transparent)
-                .on_press(callback(family.clone())),
-            )
-        });
+        let list = families.iter().fold(
+            widget::list_column::with_capacity(families.len()),
+            |list, family| {
+                let selected = &**family == current_font;
+                list.add(selection_context_item(
+                    family,
+                    selected,
+                    callback(family.clone()),
+                ))
+            },
+        );
         list.into()
     }
 

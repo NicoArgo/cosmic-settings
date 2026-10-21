@@ -16,25 +16,24 @@ use cosmic::app::ContextDrawer;
 use cosmic::config::CosmicTk;
 use cosmic::cosmic_config::{Config, ConfigSet, CosmicConfigEntry};
 use cosmic::cosmic_theme::palette::{FromColor, Hsv, Srgb};
-use cosmic::cosmic_theme::{CornerRadii, Density, ThemeBuilder, ThemeMode};
+use cosmic::cosmic_theme::{CornerRadii, Density, Roundness, ThemeBuilder, ThemeMode};
 #[cfg(feature = "xdg-portal")]
 use cosmic::dialog::file_chooser::{self, FileFilter};
 use cosmic::iced::Subscription;
-use cosmic::iced_core::{Alignment, Length};
-use cosmic::widget::{
-    button, color_picker::ColorPickerUpdate, container, horizontal_space, radio, row, settings,
-    text,
-};
-use cosmic::{Apply, Element, Task, widget};
+use cosmic::iced::core::{Alignment, Length};
+use cosmic::widget::color_picker::ColorPickerUpdate;
+use cosmic::widget::space::horizontal;
+use cosmic::widget::text_input::focus;
+use cosmic::widget::{button, container, row, settings, text};
+use cosmic::{Apply, Element, Task, task, widget};
 #[cfg(feature = "wayland")]
 use cosmic_panel_config::CosmicPanelConfig;
-use cosmic_settings_page::Section;
-use cosmic_settings_page::{self as page, section};
+use cosmic_settings_page::{self as page, Section, section};
 use ron::ser::PrettyConfig;
-use slab::Slab;
 use slotmap::{Key, SlotMap};
 
 use crate::app;
+use crate::pages::desktop::appearance::font_config::FONT_SEARCH;
 
 #[derive(Clone, Copy, Debug)]
 pub enum ContextView {
@@ -42,6 +41,7 @@ pub enum ContextView {
     ApplicationBackground,
     ContainerBackground,
     ControlComponent,
+    FrostedGlass,
     #[cfg(feature = "cosmic-comp-config")]
     ShadowAndCorners,
     CustomAccent,
@@ -141,6 +141,7 @@ pub enum Message {
     #[cfg(feature = "xdg-portal")]
     ExportSuccess,
 
+    FocusFontInput,
     GapSize(u32),
     #[cfg(feature = "xdg-portal")]
     ImportError,
@@ -159,6 +160,12 @@ pub enum Message {
     UseDefaultWindowHint(bool),
     WindowHintSize(u32),
     Daytime(bool),
+    Blur(u8),
+    Glass(f32),
+    FrostedPanel(bool),
+    FrostedApplets(bool),
+    FrostedSystemInterface(bool),
+    FrostedWindows(bool),
 }
 
 impl From<Message> for crate::app::Message {
@@ -170,56 +177,6 @@ impl From<Message> for crate::app::Message {
 impl From<Message> for crate::pages::Message {
     fn from(message: Message) -> Self {
         crate::pages::Message::Appearance(message)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Roundness {
-    Round,
-    SlightlyRound,
-    Square,
-}
-
-impl From<Roundness> for CornerRadii {
-    fn from(value: Roundness) -> Self {
-        match value {
-            Roundness::Round => CornerRadii {
-                radius_0: [0.0; 4],
-                radius_xs: [4.0; 4],
-                radius_s: [8.0; 4],
-                radius_m: [16.0; 4],
-                radius_l: [32.0; 4],
-                radius_xl: [160.0; 4],
-            },
-            Roundness::SlightlyRound => CornerRadii {
-                radius_0: [0.0; 4],
-                radius_xs: [2.0; 4],
-                radius_s: [8.0; 4],
-                radius_m: [8.0; 4],
-                radius_l: [8.0; 4],
-                radius_xl: [8.0; 4],
-            },
-            Roundness::Square => CornerRadii {
-                radius_0: [0.0; 4],
-                radius_xs: [2.0; 4],
-                radius_s: [2.0; 4],
-                radius_m: [2.0; 4],
-                radius_l: [2.0; 4],
-                radius_xl: [2.0; 4],
-            },
-        }
-    }
-}
-
-impl From<CornerRadii> for Roundness {
-    fn from(value: CornerRadii) -> Self {
-        if (value.radius_m[0] - 16.0).abs() < 0.01 {
-            Self::Round
-        } else if (value.radius_m[0] - 8.0).abs() < 0.01 {
-            Self::SlightlyRound
-        } else {
-            Self::Square
-        }
     }
 }
 
@@ -243,6 +200,9 @@ impl Page {
 
             Message::DrawerOpen(context_view) => {
                 self.context_view = Some(context_view);
+                let mut previous =
+                    std::mem::replace(&mut self.drawer, drawer::Content::from(&self.theme_manager));
+                self.drawer.preserve_from(&mut previous);
                 tasks.push(cosmic::task::message(
                     crate::app::Message::OpenContextDrawer(self.entity),
                 ));
@@ -291,8 +251,8 @@ impl Page {
 
                 #[cfg(feature = "wayland")]
                 tokio::task::spawn(async move {
-                    Self::update_panel_radii(r);
                     Self::update_dock_padding(r);
+                    Self::update_panel_radii(r);
                 });
             }
 
@@ -328,6 +288,10 @@ impl Page {
                 } else {
                     ThemeBuilder::light()
                 };
+
+                self.roundness = builder.corner_radii.into();
+                self.density = Density::Standard;
+
                 self.theme_manager.set_active_hint(builder.active_hint);
 
                 self.theme_manager
@@ -484,6 +448,9 @@ impl Page {
                     tracing::error!(?err, "Error setting dark mode");
                 }
 
+                self.roundness = builder.corner_radii.into();
+                self.density = Density::Standard;
+
                 self.theme_manager
                     .selected_customizer_mut()
                     .set_builder(*builder.clone())
@@ -551,6 +518,86 @@ impl Page {
                     self.drawer.reset(&self.theme_manager);
                 }
             }
+
+            Message::FocusFontInput => {
+                // retry until the widget is in the tree and focused or the dialog is removed.
+                if matches!(
+                    self.context_view,
+                    Some(ContextView::SystemFont | ContextView::MonospaceFont)
+                ) {
+                    return cosmic::iced::runtime::task::widget(
+                        cosmic::iced::core::widget::operation::focusable::find_focused(),
+                    )
+                    .collect()
+                    .then(|id| {
+                        if id.first().is_some_and(|id| *id == FONT_SEARCH.clone()) {
+                            Task::none()
+                        } else {
+                            focus(FONT_SEARCH.clone()).chain(task::message(Message::FocusFontInput))
+                        }
+                    });
+                }
+            }
+            Message::Blur(b) => {
+                let Ok(blur_strength) = b.try_into() else {
+                    tracing::error!("Invalid blur strength: {b}");
+                    return Task::none();
+                };
+                theme_staged = self.theme_manager.set_frosted(blur_strength).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+
+                tasks.push(self.drawer.update_blur(blur_strength as u8));
+            }
+            Message::Glass(glass) => {
+                let mut alpha_map = cosmic::cosmic_theme::AlphaMap::default();
+                let glass_offset_min = alpha_map.extremely_high_2;
+                let glass_offset_max = 1.0 - alpha_map.extremely_low;
+                let offset = (glass - 0.5) / 0.5
+                    * if glass < 0.5 {
+                        glass_offset_min
+                    } else {
+                        glass_offset_max
+                    };
+                alpha_map = alpha_map.offset(offset);
+
+                // TODO optimize and apply to both light and dark themes
+                theme_staged = self.theme_manager.set_glass(alpha_map).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+
+                tasks.push(self.drawer.update_glass(glass));
+            }
+            Message::FrostedSystemInterface(v) => {
+                theme_staged = self.theme_manager.set_frosted_system_interface(v).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+                tasks.push(self.drawer.update_frosted_system_interface(v));
+            }
+            Message::FrostedWindows(v) => {
+                theme_staged = self.theme_manager.set_frosted_windows(v).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+                tasks.push(self.drawer.update_frosted_windows(v));
+            }
+            Message::FrostedPanel(v) => {
+                theme_staged = self.theme_manager.set_frosted_panel(v).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+                tasks.push(self.drawer.update_frosted_panel(v));
+            }
+            Message::FrostedApplets(v) => {
+                theme_staged = self.theme_manager.set_frosted_applets(v).map(|_| {
+                    self.drawer.reset(&self.theme_manager);
+                    theme_manager::ThemeStaged::Current
+                });
+                tasks.push(self.drawer.update_frosted_applets(v));
+            }
         }
 
         let mut tasks = cosmic::Task::batch(tasks);
@@ -566,112 +613,65 @@ impl Page {
 
     // TODO: cache panel and dock configs so that they needn't be re-read
     #[cfg(feature = "wayland")]
+    fn load_panel_config(name: &str) -> Option<(Config, CosmicPanelConfig)> {
+        let helper = CosmicPanelConfig::cosmic_config(name).ok()?;
+        let config = CosmicPanelConfig::get_entry(&helper).ok()?;
+        (config.name == name).then_some((helper, config))
+    }
+
+    #[cfg(feature = "wayland")]
     pub fn update_panel_radii(roundness: Roundness) {
-        let panel_config_helper = CosmicPanelConfig::cosmic_config("Panel").ok();
-        let dock_config_helper = CosmicPanelConfig::cosmic_config("Dock").ok();
+        let corner_radii: CornerRadii = roundness.into();
+        let radius = corner_radii.radius_xl[0] as u32;
 
-        let mut panel_config = panel_config_helper.as_ref().and_then(|config_helper| {
-            let panel_config = CosmicPanelConfig::get_entry(config_helper).ok()?;
-            (panel_config.name == "Panel").then_some(panel_config)
-        });
+        for name in ["Panel", "Dock"] {
+            let Some((helper, mut config)) = Self::load_panel_config(name) else {
+                continue;
+            };
 
-        let mut dock_config = dock_config_helper.as_ref().and_then(|config_helper| {
-            let panel_config = CosmicPanelConfig::get_entry(config_helper).ok()?;
-            (panel_config.name == "Dock").then_some(panel_config)
-        });
-
-        if let Some(panel_config_helper) = panel_config_helper.as_ref()
-            && let Some(panel_config) = panel_config.as_mut()
-        {
-            let radii = if panel_config.anchor_gap {
-                let cornder_radii: CornerRadii = roundness.into();
-                cornder_radii.radius_xl[0] as u32
-            } else if matches!(roundness, Roundness::Round) && !panel_config.expand_to_edges {
-                12
+            let new_radius = if config.anchor_gap {
+                radius
+            } else if !config.expand_to_edges {
+                radius.min(12)
             } else {
                 0
             };
 
-            if let Err(why) = panel_config.set_border_radius(panel_config_helper, radii) {
-                tracing::error!(?why, "Error updating panel corner radii");
-            }
-        }
-
-        if let Some(dock_config_helper) = dock_config_helper.as_ref()
-            && let Some(dock_config) = dock_config.as_mut()
-        {
-            let radii = if dock_config.anchor_gap {
-                let cornder_radii: CornerRadii = roundness.into();
-                cornder_radii.radius_xl[0] as u32
-            } else if matches!(roundness, Roundness::Round) && !dock_config.expand_to_edges {
-                12
-            } else {
-                0
-            };
-
-            if let Err(why) = dock_config.set_border_radius(dock_config_helper, radii) {
-                tracing::error!(?why, "Error updating dock corner radii");
+            if let Err(why) = config.set_border_radius(&helper, new_radius) {
+                tracing::error!(?why, "Error updating {name} corner radii");
             }
         }
     }
 
     #[cfg(feature = "wayland")]
     pub fn update_dock_padding(roundness: Roundness) {
-        let dock_config_helper = CosmicPanelConfig::cosmic_config("Dock").ok();
+        let Some((helper, mut config)) = Self::load_panel_config("Dock") else {
+            return;
+        };
 
-        let mut dock_config = dock_config_helper.as_ref().and_then(|config_helper| {
-            let panel_config = CosmicPanelConfig::get_entry(config_helper).ok()?;
-            (panel_config.name == "Dock").then_some(panel_config)
-        });
+        let padding = match roundness {
+            Roundness::Round | Roundness::SlightlyRound => 4,
+            Roundness::Square => 0,
+        };
 
-        if let Some(dock_config_helper) = dock_config_helper.as_ref()
-            && let Some(dock_config) = dock_config.as_mut()
-        {
-            let padding = match roundness {
-                Roundness::Round => 4,
-                Roundness::SlightlyRound => 4,
-                Roundness::Square => 0,
-            };
-
-            if let Err(why) = dock_config.set_padding(dock_config_helper, padding) {
-                tracing::error!(?why, "Error updating dock padding");
-            }
+        if let Err(why) = config.set_padding(&helper, padding) {
+            tracing::error!(?why, "Error updating dock padding");
         }
     }
 
-    // TODO: cache panel and dock configs so that they needn't be re-read
     #[cfg(feature = "wayland")]
     pub fn update_panel_spacing(density: Density) {
         let spacing: cosmic::cosmic_theme::Spacing = density.into();
-        let space_none = spacing.space_none;
-        let panel_config_helper = CosmicPanelConfig::cosmic_config("Panel").ok();
-        let dock_config_helper = CosmicPanelConfig::cosmic_config("Dock").ok();
-        let mut panel_config = panel_config_helper.as_ref().and_then(|config_helper| {
-            let panel_config = CosmicPanelConfig::get_entry(config_helper).ok()?;
-            (panel_config.name == "Panel").then_some(panel_config)
-        });
-        let mut dock_config = dock_config_helper.as_ref().and_then(|config_helper| {
-            let panel_config = CosmicPanelConfig::get_entry(config_helper).ok()?;
-            (panel_config.name == "Dock").then_some(panel_config)
-        });
+        let space_none = spacing.space_none as u32;
 
-        if let Some(panel_config_helper) = panel_config_helper.as_ref()
-            && let Some(panel_config) = panel_config.as_mut()
-        {
-            let update = panel_config.set_spacing(panel_config_helper, space_none as u32);
-            if let Err(err) = update {
-                tracing::error!(?err, "Error updating panel spacing");
+        for name in ["Panel", "Dock"] {
+            let Some((helper, mut config)) = Self::load_panel_config(name) else {
+                continue;
+            };
+            if let Err(err) = config.set_spacing(&helper, space_none) {
+                tracing::error!(?err, "Error updating {name} spacing");
             }
-        };
-
-        if let Some(dock_config_helper) = dock_config_helper.as_ref()
-            && let Some(dock_config) = dock_config.as_mut()
-        {
-            let update = dock_config.set_spacing(dock_config_helper, space_none as u32);
-            if let Err(err) = update {
-                tracing::error!(?err, "Error updating dock spacing");
-            }
-        };
+        }
     }
 
     fn can_reset(&self) -> bool {
@@ -720,7 +720,7 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> page::Info {
         page::Info::new("appearance", "preferences-appearance-symbolic")
             .title(fl!("appearance"))
-            .description(fl!("appearance", "desc"))
+            .description(fl!("xdg-entry-appearance-comment"))
     }
 
     fn on_enter(&mut self) -> Task<crate::pages::Message> {
@@ -784,36 +784,21 @@ pub fn interface_density() -> Section<crate::pages::Message> {
 
             settings::section()
                 .title(&section.title)
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[compact]),
-                        Density::Compact,
-                        Some(page.density),
-                        Message::Density,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[comfortable]),
-                        Density::Standard,
-                        Some(page.density),
-                        Message::Density,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
-                .add(settings::item_row(vec![
-                    radio(
-                        text::body(&descriptions[spacious]),
-                        Density::Spacious,
-                        Some(page.density),
-                        Message::Density,
-                    )
-                    .width(Length::Fill)
-                    .into(),
-                ]))
+                .add(settings::item::builder(&descriptions[compact]).radio(
+                    Density::Compact,
+                    Some(page.density),
+                    Message::Density,
+                ))
+                .add(settings::item::builder(&descriptions[comfortable]).radio(
+                    Density::Standard,
+                    Some(page.density),
+                    Message::Density,
+                ))
+                .add(settings::item::builder(&descriptions[spacious]).radio(
+                    Density::Spacious,
+                    Some(page.density),
+                    Message::Density,
+                ))
                 .apply(Element::from)
                 .map(crate::pages::Message::Appearance)
         })
@@ -821,10 +806,10 @@ pub fn interface_density() -> Section<crate::pages::Message> {
 
 #[allow(clippy::too_many_lines)]
 pub fn window_management() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let active_hint = descriptions.insert(fl!("window-management-appearance", "active-hint"));
-    let gaps = descriptions.insert(fl!("window-management-appearance", "gaps"));
+    crate::slab!(descriptions {
+        active_hint = fl!("window-management-appearance", "active-hint");
+        gaps = fl!("window-management-appearance", "gaps");
+    });
 
     Section::default()
         .title(fl!("window-management-appearance"))
@@ -914,9 +899,9 @@ pub fn experimental() -> Section<crate::pages::Message> {
 
 #[allow(clippy::too_many_lines)]
 pub fn reset_button() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let reset_to_default = descriptions.insert(fl!("reset-to-default"));
+    crate::slab!(descriptions {
+        reset_to_default = fl!("reset-to-default");
+    });
 
     Section::default()
         .descriptions(descriptions)
@@ -927,7 +912,7 @@ pub fn reset_button() -> Section<crate::pages::Message> {
                     .on_press(Message::Reset)
                     .into()
             } else {
-                horizontal_space().width(1).apply(Element::from)
+                horizontal().width(1.).apply(Element::from)
             }
             .map(crate::pages::Message::Appearance)
         })

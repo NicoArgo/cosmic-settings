@@ -2,28 +2,36 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 #[cfg(feature = "wgpu")]
-use cosmic::iced_wgpu::wgpu;
-use std::{collections::HashMap, collections::HashSet, ffi::OsStr, process::Command};
+use cosmic::iced::wgpu;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsStr;
+use std::process::Command;
 
 #[must_use]
 #[derive(Clone, Debug, Default)]
 pub struct Info {
-    pub desktop_environment: String,
     pub device_name: String,
-    pub disk_capacity: String,
-    pub graphics: Vec<String>,
     pub hardware_model: String,
     pub memory: String,
+    pub processor: String,
+    pub graphics: Vec<String>,
+    pub disk_capacity: String,
     pub operating_system: String,
     pub os_architecture: String,
     pub kernel_version: String,
-    pub processor: String,
+    pub desktop_environment: String,
     pub windowing_system: String,
 }
 
 impl Info {
+    /// OpenGL backend reports GPU names with renderer suffixes like "/PCIe/SSE2".
+    /// We strip these to match against Vulkan backend's clean name.
+    fn normalize_gpu_name(name: &str) -> String {
+        name.split('/').next().unwrap_or(name).trim().to_string()
+    }
+
     #[cfg(feature = "wgpu")]
-    fn wgpu_graphics() -> Vec<String> {
+    async fn wgpu_graphics() -> Vec<String> {
         let mut graphics = Vec::new();
 
         // Use wgpu to enumerate GPUs. Works cross-platform and doesn't require external tools
@@ -37,7 +45,7 @@ impl Info {
         let mut seen_devices = HashSet::new();
         let mut seen_names = HashSet::new();
 
-        for adapter in adapters {
+        for adapter in adapters.await {
             let adapter_info = adapter.get_info();
 
             if adapter_info.device_type == wgpu::DeviceType::Cpu {
@@ -104,14 +112,16 @@ impl Info {
                 continue;
             }
 
-            if adapter_info.device == 0 && seen_names.contains(&gpu_name) {
+            let normalized_gpu_name = Self::normalize_gpu_name(&gpu_name);
+
+            if adapter_info.device == 0 && seen_names.contains(&normalized_gpu_name) {
                 continue;
             }
 
             if adapter_info.device != 0 {
                 seen_devices.insert(device_key);
             }
-            seen_names.insert(gpu_name.clone());
+            seen_names.insert(normalized_gpu_name);
             graphics.push(gpu_name);
         }
 
@@ -132,13 +142,13 @@ impl Info {
         graphics
     }
 
-    pub fn load() -> Info {
+    pub async fn load() -> Info {
         let mut info = Info {
+            hardware_model: hardware_model(),
+            processor: processor_name(),
+            operating_system: operating_system(),
             os_architecture: architecture(),
             kernel_version: kernel_version(),
-            hardware_model: hardware_model(),
-            operating_system: operating_system(),
-            processor: processor_name(),
             ..Default::default()
         };
 
@@ -179,12 +189,16 @@ impl Info {
             if let Some(first) = session.get_mut(0..1) {
                 first.make_ascii_uppercase();
             }
-            info.desktop_environment = session;
+            info.desktop_environment = if session.eq_ignore_ascii_case("COSMIC") {
+                format!("COSMIC {}", env!("CARGO_PKG_VERSION"))
+            } else {
+                session
+            };
         }
 
         #[cfg(feature = "wgpu")]
         {
-            info.graphics = Self::wgpu_graphics();
+            info.graphics = Self::wgpu_graphics().await;
         }
 
         info

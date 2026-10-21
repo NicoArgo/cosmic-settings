@@ -31,6 +31,8 @@ pub enum Message {
     Accessibility(accessibility::Message),
     #[cfg(feature = "page-accessibility")]
     AccessibilityMagnifier(accessibility::magnifier::Message),
+    #[cfg(feature = "page-accessibility")]
+    AccessibilityOsk(accessibility::osk::Message),
     #[cfg(feature = "page-input")]
     AccessibilityShortcuts(input::keyboard::shortcuts::ShortcutMessage),
     #[cfg(feature = "page-about")]
@@ -86,6 +88,8 @@ pub enum Message {
     Region(time::region::Message),
     #[cfg(feature = "page-sound")]
     Sound(sound::Message),
+    #[cfg(feature = "page-sound")]
+    SoundApplications(sound::applications::Message),
     #[cfg(feature = "page-sound")]
     SoundDeviceProfiles(sound::device_profiles::Message),
     StartupApps(applications::startup_apps::Message),

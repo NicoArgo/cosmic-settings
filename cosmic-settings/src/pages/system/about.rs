@@ -1,12 +1,12 @@
 // Copyright 2023 System76 <info@system76.com>
 // SPDX-License-Identifier: GPL-3.0-only
 
+use cosmic::iced::Alignment;
 use cosmic_settings_page::{self as page, Section, section};
 
 use super::info::Info;
 use cosmic::widget::{editable_input, list_column, settings, text};
 use cosmic::{Apply, Task};
-use slab::Slab;
 use slotmap::SlotMap;
 
 #[derive(Clone, Debug)]
@@ -61,12 +61,13 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> page::Info {
         page::Info::new("about", "help-about-symbolic")
             .title(fl!("about"))
-            .description(fl!("about", "desc"))
+            .description(fl!("xdg-entry-about-comment"))
     }
 
     fn on_enter(&mut self) -> Task<crate::pages::Message> {
         let (task, handle) = Task::future(async move {
-            crate::pages::Message::About(Message::Info(Box::new(Info::load())))
+            let info = Info::load().await;
+            crate::pages::Message::About(Message::Info(Box::new(info)))
         })
         .abortable();
 
@@ -162,10 +163,10 @@ async fn set_hostname_impl(hostname: &str) -> Result<(), String> {
 }
 
 fn device() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let device = descriptions.insert(fl!("about-device"));
-    let device_desc = descriptions.insert(fl!("about-device", "desc"));
+    crate::slab!(descriptions {
+        device = fl!("about-device");
+        device_desc = fl!("about-device", "desc");
+    });
 
     Section::default()
         .descriptions(descriptions)
@@ -178,7 +179,7 @@ fn device() -> Section<crate::pages::Message> {
                 page.editing_device_name,
                 Message::HostnameEdit,
             )
-            .width(250)
+            .width(250.)
             .on_input(Message::HostnameInput)
             .on_unfocus(Message::HostnameSubmit)
             .on_submit(|_| Message::HostnameSubmit);
@@ -195,13 +196,13 @@ fn device() -> Section<crate::pages::Message> {
 }
 
 fn hardware() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let model = descriptions.insert(fl!("about-hardware", "model"));
-    let memory = descriptions.insert(fl!("about-hardware", "memory"));
-    let processor = descriptions.insert(fl!("about-hardware", "processor"));
-    let graphics = descriptions.insert(fl!("about-hardware", "graphics"));
-    let disk_capacity = descriptions.insert(fl!("about-hardware", "disk-capacity"));
+    crate::slab!(descriptions {
+        model = fl!("about-hardware", "model");
+        memory = fl!("about-hardware", "memory");
+        processor = fl!("about-hardware", "processor");
+        graphics = fl!("about-hardware", "graphics");
+        disk_capacity = fl!("about-hardware", "disk-capacity");
+    });
 
     Section::default()
         .title(fl!("about-hardware"))
@@ -211,43 +212,46 @@ fn hardware() -> Section<crate::pages::Message> {
 
             let mut section_builder = settings::section()
                 .title(&section.title)
-                .add(settings::flex_item(
-                    &*desc[model],
-                    text::body(&page.info.hardware_model),
-                ))
-                .add(settings::flex_item(
-                    &*desc[memory],
-                    text::body(&page.info.memory),
-                ))
-                .add(settings::flex_item(
-                    &*desc[processor],
-                    text::body(&page.info.processor),
-                ));
+                .add(
+                    settings::flex_item(&*desc[model], text::body(&page.info.hardware_model))
+                        .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(&*desc[memory], text::body(&page.info.memory))
+                        .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(&*desc[processor], text::body(&page.info.processor))
+                        .align_items(Alignment::Center),
+                );
 
             for card in &page.info.graphics {
-                section_builder = section_builder.add(settings::flex_item(
-                    &*desc[graphics],
-                    text::body(card.as_str()),
-                ));
+                section_builder = section_builder.add(
+                    settings::flex_item(&*desc[graphics], text::body(card.as_str()))
+                        .align_items(Alignment::Center),
+                );
             }
 
             section_builder
-                .add(settings::flex_item(
-                    &*desc[disk_capacity],
-                    text::body(&page.info.disk_capacity),
-                ))
+                .add(
+                    settings::flex_item(
+                        &*desc[disk_capacity],
+                        text::body(&page.info.disk_capacity),
+                    )
+                    .align_items(Alignment::Center),
+                )
                 .into()
         })
 }
 
 fn os() -> Section<crate::pages::Message> {
-    let mut descriptions = Slab::new();
-
-    let os = descriptions.insert(fl!("about-os", "os"));
-    let os_arch = descriptions.insert(fl!("about-os", "os-architecture"));
-    let kernel = descriptions.insert(fl!("about-os", "kernel"));
-    let desktop = descriptions.insert(fl!("about-os", "desktop-environment"));
-    let windowing_system = descriptions.insert(fl!("about-os", "windowing-system"));
+    crate::slab!(descriptions {
+        os = fl!("about-os", "os");
+        os_arch = fl!("about-os", "os-architecture");
+        kernel = fl!("about-os", "kernel");
+        desktop = fl!("about-os", "desktop-environment");
+        windowing_system = fl!("about-os", "windowing-system");
+    });
 
     Section::default()
         .title(fl!("about-os"))
@@ -256,26 +260,32 @@ fn os() -> Section<crate::pages::Message> {
             let desc = &section.descriptions;
             settings::section()
                 .title(&section.title)
-                .add(settings::flex_item(
-                    &*desc[os],
-                    text::body(&page.info.operating_system),
-                ))
-                .add(settings::flex_item(
-                    &*desc[os_arch],
-                    text::body(&page.info.os_architecture),
-                ))
-                .add(settings::flex_item(
-                    &*desc[kernel],
-                    text::body(&page.info.kernel_version),
-                ))
-                .add(settings::flex_item(
-                    &*desc[desktop],
-                    text::body(&page.info.desktop_environment),
-                ))
-                .add(settings::flex_item(
-                    &*desc[windowing_system],
-                    text::body(&page.info.windowing_system),
-                ))
+                .add(
+                    settings::flex_item(&*desc[os], text::body(&page.info.operating_system))
+                        .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(&*desc[os_arch], text::body(&page.info.os_architecture))
+                        .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(&*desc[kernel], text::body(&page.info.kernel_version))
+                        .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(
+                        &*desc[desktop],
+                        text::body(&page.info.desktop_environment),
+                    )
+                    .align_items(Alignment::Center),
+                )
+                .add(
+                    settings::flex_item(
+                        &*desc[windowing_system],
+                        text::body(&page.info.windowing_system),
+                    )
+                    .align_items(Alignment::Center),
+                )
                 .into()
         })
 }

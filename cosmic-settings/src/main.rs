@@ -7,6 +7,12 @@
 #![allow(clippy::cast_lossless)]
 #![allow(clippy::too_many_lines)]
 
+#[cfg(not(any(feature = "systemd", feature = "openrc")))]
+compile_error!(
+    "At least one service manager feature must be enabled. \
+     Enable 'systemd' or 'openrc' for bluetooth service management."
+);
+
 pub mod app;
 use std::str::FromStr;
 
@@ -16,6 +22,7 @@ pub mod config;
 #[macro_use]
 pub mod localize;
 pub mod pages;
+pub mod service_manager;
 pub mod subscription;
 pub mod theme;
 pub mod utils;
@@ -24,7 +31,8 @@ pub mod widget;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use cosmic::{app::CosmicFlags, iced::Limits};
+use cosmic::app::CosmicFlags;
+use cosmic::iced::Limits;
 use i18n_embed::DesktopLanguageRequester;
 use ron::error::SpannedError;
 use serde::{Deserialize, Serialize};
@@ -60,6 +68,9 @@ pub enum PageCommands {
     /// Accessibility Magnifier settings page
     #[cfg(feature = "page-accessibility")]
     AccessibilityMagnifier,
+    /// Accessibility OSK settings page
+    #[cfg(feature = "page-accessibility")]
+    AccessibilityOsk,
     /// About settings page
     #[cfg(feature = "page-about")]
     About,

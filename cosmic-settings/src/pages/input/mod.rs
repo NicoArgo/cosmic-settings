@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::app;
-use cosmic::{
-    Task,
-    cosmic_config::{self, ConfigGet, ConfigSet},
-};
+use cosmic::Task;
+use cosmic::cosmic_config::{self, ConfigGet, ConfigSet};
 use cosmic_comp_config::input::{
     AccelConfig, AccelProfile, ClickMethod, InputConfig, ScrollConfig, ScrollMethod, TapButtonMap,
     TapConfig,
@@ -188,7 +186,7 @@ impl page::Page<crate::pages::Message> for Page {
         // XXX icon?
         page::Info::new("input-devices", "preferences-input-devices-symbolic")
             .title(fl!("input-devices"))
-            .description(fl!("input-devices", "desc"))
+            .description(fl!("xdg-entry-input-comment"))
     }
 }
 

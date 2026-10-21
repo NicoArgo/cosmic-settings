@@ -4,18 +4,17 @@ use fast_image_resize::SrcCropping;
 use futures_lite::Stream;
 use futures_util::StreamExt;
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage};
+use image::{DynamicImage, ImageBuffer, ImageDecoder, ImageResult, Limits, Rgba, RgbaImage};
 use jxl_oxide::integration::JxlDecoder;
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
+use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
-use std::{
-    borrow::Cow,
-    collections::{HashMap, hash_map::DefaultHasher},
-    hash::{Hash, Hasher},
-    io::Read,
-    path::{Path, PathBuf},
-    pin::Pin,
-};
+use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use walkdir::WalkDir;
 
 pub const DEFAULT_COLORS: &[Color] = &[
@@ -104,6 +103,7 @@ pub async fn load_each_from_path(
 ) -> Pin<Box<dyn Send + Stream<Item = (PathBuf, RgbaImage, RgbaImage)>>> {
     let candidate_paths: Vec<_> = WalkDir::new(path)
         .max_depth(3)
+        .follow_links(true)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().is_file())
@@ -134,7 +134,7 @@ pub async fn load_each_from_path(
         })
         .buffered(4)
         .filter_map(|value| async { value.ok().flatten() })
-        .take(100);
+        .take(500);
 
     Box::pin(future)
 }
@@ -304,13 +304,31 @@ fn open_image(input_buffer: &mut Vec<u8>, path: &Path) -> Option<DynamicImage> {
         return None;
     };
 
-    match image_decoder.decode() {
+    match decode(image_decoder) {
         Ok(image) => Some(image),
         Err(why) => {
             tracing::error!(?path, ?why, "image decode failed");
             None
         }
     }
+}
+
+fn decode(
+    mut reader: image::ImageReader<std::io::Cursor<&mut Vec<u8>>>,
+) -> ImageResult<DynamicImage> {
+    let mut limits = Limits::default();
+    reader.limits(limits.clone());
+
+    let mut decoder = reader.into_decoder()?;
+    let orientation = decoder.orientation()?;
+
+    limits.reserve(decoder.total_bytes())?;
+    decoder.set_limits(limits)?;
+
+    let mut image = DynamicImage::from_decoder(decoder)?;
+    image.apply_orientation(orientation);
+
+    Ok(image)
 }
 
 // https://users.rust-lang.org/t/how-to-trim-image-to-circle-image-without-jaggy/70374/2
@@ -434,11 +452,19 @@ fn border_radius(
 pub fn decode_jpegxl(path: &std::path::Path) -> eyre::Result<DynamicImage> {
     let file = File::open(path).map_err(|why| eyre!("failed to open jxl image file: {why}"))?;
 
-    let decoder =
+    let mut decoder =
         JxlDecoder::new(file).map_err(|why| eyre!("failed to read jxl image header: {why}"))?;
 
-    image::DynamicImage::from_decoder(decoder)
-        .map_err(|why| eyre!("failed to decode jxl image: {why}"))
+    let orientation = decoder
+        .orientation()
+        .map_err(|why| eyre!("failed to read jxl image orientation: {why}"))?;
+
+    let mut image = image::DynamicImage::from_decoder(decoder)
+        .map_err(|why| eyre!("failed to decode jxl image: {why}"))?;
+
+    image.apply_orientation(orientation);
+
+    Ok(image)
 }
 
 /// Use `fast-image-resize` crate for faster thumbnail generation.

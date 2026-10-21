@@ -1,7 +1,8 @@
 use cosmic::app::ContextDrawer;
 use cosmic::iced::{Alignment, Length};
+use cosmic::widget::text_input::focus;
 use cosmic::widget::{button, icon, settings, text};
-use cosmic::{Apply, Element, Task, widget};
+use cosmic::{Apply, Element, Task, task, widget};
 use cosmic_settings_page::section::Entity;
 use cosmic_settings_page::{self as page, Content, Info, Section};
 use freedesktop_desktop_entry::DesktopEntry;
@@ -9,7 +10,11 @@ use itertools::Itertools;
 use slotmap::{Key, SlotMap};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use tracing::error;
+
+pub static ADD_APPLICATION_SEARCH: LazyLock<widget::Id> =
+    LazyLock::new(|| widget::Id::new("ADD_APPLICATION_SEARCH"));
 
 #[derive(Clone, Debug)]
 pub struct CachedApps {
@@ -51,6 +56,7 @@ pub enum Message {
     ShowApplicationSidebar(DirectoryType),
     UpdateApplications(CachedApps),
     UpdateStartupApplications(CachedApps),
+    FocusAddApplicationSearch,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -101,7 +107,7 @@ impl page::Page<crate::pages::Message> for Page {
     fn info(&self) -> Info {
         page::Info::new("startup-apps", "preferences-startup-applications-symbolic")
             .title(fl!("startup-apps"))
-            .description(fl!("startup-apps", "desc"))
+            .description(fl!("xdg-entry-startup-apps-comment"))
     }
     fn content(
         &self,
@@ -116,6 +122,7 @@ impl page::Page<crate::pages::Message> for Page {
                 let search = widget::search_input("", &self.application_search)
                     .on_input(|i| Message::ApplicationSearch(i).into())
                     .on_clear(Message::ApplicationSearch(String::new()).into())
+                    .id(ADD_APPLICATION_SEARCH.clone())
                     .apply(Element::from);
 
                 Some(
@@ -142,8 +149,11 @@ impl page::Page<crate::pages::Message> for Page {
             let user_entries =
                 freedesktop_desktop_entry::Iter::new(user_dirs.into_iter()).entries(Some(&locales));
 
+            let mut user_entries_vec = user_entries.collect_vec();
+            sort_entries_by_name(&mut user_entries_vec, &locales);
+
             let mut apps_hash = HashMap::with_capacity(1);
-            apps_hash.insert(DirectoryType::User, user_entries.collect_vec());
+            apps_hash.insert(DirectoryType::User, user_entries_vec);
 
             Message::UpdateStartupApplications(CachedApps {
                 apps: apps_hash,
@@ -217,7 +227,8 @@ impl Page {
             }
             Message::ShowApplicationSidebar(directory_type) => {
                 self.context = Some(Context::AddApplication(directory_type));
-                return cosmic::task::message(crate::app::Message::OpenContextDrawer(self.entity));
+                return cosmic::task::message(crate::app::Message::OpenContextDrawer(self.entity))
+                    .chain(task::message(Message::FocusAddApplicationSearch));
             }
             Message::AddStartupApplication(directory_type, app) => {
                 let mut file_name = app.clone().appid;
@@ -246,6 +257,10 @@ impl Page {
                                 if let Some(target_apps) = target_apps {
                                     let mut new_apps = target_apps.clone();
                                     new_apps.push(app.clone());
+                                    sort_entries_by_name(
+                                        &mut new_apps,
+                                        &cached_startup_apps.locales,
+                                    );
 
                                     cached_startup_apps
                                         .apps
@@ -311,6 +326,26 @@ impl Page {
                 self.app_to_remove = None;
                 self.target_directory_type = None;
                 self.context = None;
+            }
+            Message::FocusAddApplicationSearch => {
+                // retry until the widget is in the tree and focused or the dialog is removed.
+                if matches!(self.context, Some(Context::AddApplication(_))) {
+                    return cosmic::iced::runtime::task::widget(
+                        cosmic::iced::core::widget::operation::focusable::find_focused(),
+                    )
+                    .collect()
+                    .then(|id| {
+                        if id
+                            .first()
+                            .is_some_and(|id| *id == ADD_APPLICATION_SEARCH.clone())
+                        {
+                            Task::none()
+                        } else {
+                            focus(ADD_APPLICATION_SEARCH.clone())
+                                .chain(task::message(Message::FocusAddApplicationSearch))
+                        }
+                    });
+                }
             }
             _ => {}
         }
@@ -433,6 +468,14 @@ fn apps() -> Section<crate::pages::Message> {
         })
 }
 
+fn sort_entries_by_name(entries: &mut [DesktopEntry], locales: &[String]) {
+    entries.sort_by_cached_key(|e| {
+        e.name(locales)
+            .map(|n| n.to_lowercase())
+            .unwrap_or_else(|| e.appid.to_lowercase())
+    });
+}
+
 fn get_all_apps(locales: Vec<String>) -> Vec<DesktopEntry> {
     let mut dedupe = HashSet::new();
 
@@ -472,6 +515,8 @@ fn get_all_apps(locales: Vec<String>) -> Vec<DesktopEntry> {
         result.push(entry.clone());
         dedupe.insert(app_id.to_owned());
     }
+
+    sort_entries_by_name(&mut result, &locales);
 
     result
 }
